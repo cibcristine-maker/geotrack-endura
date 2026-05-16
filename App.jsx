@@ -15,6 +15,9 @@ const KPI_GROUPS = [
     { id: "chatgpt_citacoes", label: "Citações ChatGPT", unit: "x", tipo: "numero" },
     { id: "gemini_citacoes", label: "Citações Gemini", unit: "x", tipo: "numero" },
     { id: "perplexity_citacoes", label: "Citações Perplexity", unit: "x", tipo: "numero" },
+    { id: "claude_citacoes", label: "Citações Claude", unit: "x", tipo: "numero" },
+    { id: "grok_citacoes", label: "Citações Grok", unit: "x", tipo: "numero" },
+    { id: "manus_citacoes", label: "Citações Manus", unit: "x", tipo: "numero" },
     { id: "posicao_resposta", label: "Posição na resposta", unit: "pos", tipo: "numero" },
     { id: "faq_schema_ativo", label: "FAQ Schema implementado?", unit: "", tipo: "bool" },
     { id: "artigos_indexados_ia", label: "Artigos indexados por IAs", unit: "art", tipo: "numero" },
@@ -26,10 +29,13 @@ const KPI_GROUPS = [
     { id: "keywords_top10", label: "Keywords Top 10", unit: "kw", tipo: "numero" },
     { id: "keywords_top3", label: "Keywords Top 3", unit: "kw", tipo: "numero" },
     { id: "artigos_publicados", label: "Artigos publicados", unit: "art", tipo: "numero" },
+    { id: "videos_youtube", label: "Vídeos c/ transcrição YouTube", unit: "vid", tipo: "numero" },
   ]},
   { id: "presenca", label: "Presença Digital", color: "#FCD34D", icon: "🌐", kpis: [
     { id: "google_reviews", label: "Avaliações Google", unit: "av", tipo: "numero" },
     { id: "nota_google", label: "Nota média Google", unit: "★", tipo: "decimal" },
+    { id: "doctoralia_reviews", label: "Avaliações Doctoralia", unit: "av", tipo: "numero" },
+    { id: "nota_doctoralia", label: "Nota média Doctoralia", unit: "★", tipo: "decimal" },
     { id: "instagram_seguidores", label: "Seguidores Instagram", unit: "seg", tipo: "numero" },
     { id: "instagram_alcance", label: "Alcance por post", unit: "p", tipo: "numero" },
     { id: "site_velocidade", label: "PageSpeed Score", unit: "pts", tipo: "numero" },
@@ -73,6 +79,8 @@ export default function App() {
   const [periodoSel,setPeriodoSel]=useState(getCurrentPeriodo());
   const [form,setForm]=useState({});
   const [obs,setObs]=useState("");
+  const [novoMedico,setNovoMedico]=useState({nome:"",especialidade:"",cidade:""});
+  const [addingSaved,setAddingSaved]=useState(false);
   const fetchAll=useCallback(async()=>{
     try{setLoading(true);setError(null);
       const [meds,regs]=await Promise.all([supa("medicos?select=*&order=nome"),supa("registros_kpi?select=*&order=periodo")]);
@@ -94,6 +102,16 @@ export default function App() {
       else{await supa("registros_kpi",{method:"POST",body:JSON.stringify({medico_id:medicoSel.id,periodo:periodoSel,valores:form,observacoes:obs})});}
       await fetchAll();setSaved(true);setTimeout(()=>setSaved(false),2500);
     }catch{setError("Erro ao salvar.");}finally{setSaving(false);}
+  }
+  async function handleAddMedico(){
+    if(!novoMedico.nome.trim()) return;
+    const slug=novoMedico.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    try{
+      await supa("medicos",{method:"POST",body:JSON.stringify({nome:novoMedico.nome.trim(),slug,especialidade:novoMedico.especialidade,cidade:novoMedico.cidade})});
+      setNovoMedico({nome:"",especialidade:"",cidade:""});
+      setAddingSaved(true);setTimeout(()=>setAddingSaved(false),2500);
+      await fetchAll();
+    }catch{setError("Erro ao adicionar médico.");}
   }
   function getHistorico(medicoId,kpiId){
     return registros.filter(r=>r.medico_id===medicoId&&r.valores?.[kpiId]!==undefined&&r.valores?.[kpiId]!=="").sort((a,b)=>a.periodo.localeCompare(b.periodo)).map(r=>({periodo:r.periodo,valor:parseFloat(r.valores[kpiId])||0}));
@@ -202,10 +220,21 @@ export default function App() {
           </tbody>
         </table></div>}
       </div>}
-      {view==="medicos"&&<div style={{maxWidth:640}}>
+      {view==="medicos"&&<div>
         <div style={{marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
           <div style={{width:4,height:24,background:"linear-gradient(to bottom,#22D3EE,#6EE7B7)",borderRadius:2}}/>
           <h2 style={{margin:0,fontSize:18,fontWeight:800,color:"#F1F5F9"}}>Médicos Parceiros</h2>
+        </div>
+        <div style={{background:s.card,border:`1px solid ${s.border}`,borderRadius:12,padding:"18px",marginBottom:20}}>
+          <div style={{color:s.accent,fontWeight:700,fontSize:12,marginBottom:14}}>➕ Adicionar novo médico</div>
+          <input value={novoMedico.nome} onChange={e=>setNovoMedico(n=>({...n,nome:e.target.value}))} placeholder="Nome completo (ex: Dr. João Silva)" style={{background:"#070D1A",border:`1px solid ${s.border2}`,color:s.text,padding:"10px 12px",borderRadius:8,fontSize:13,width:"100%",marginBottom:10}}/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            <input value={novoMedico.especialidade} onChange={e=>setNovoMedico(n=>({...n,especialidade:e.target.value}))} placeholder="Especialidade" style={{background:"#070D1A",border:`1px solid ${s.border2}`,color:s.text,padding:"10px 12px",borderRadius:8,fontSize:13,width:"100%"}}/>
+            <input value={novoMedico.cidade} onChange={e=>setNovoMedico(n=>({...n,cidade:e.target.value}))} placeholder="Cidade" style={{background:"#070D1A",border:`1px solid ${s.border2}`,color:s.text,padding:"10px 12px",borderRadius:8,fontSize:13,width:"100%"}}/>
+          </div>
+          <button onClick={handleAddMedico} style={{background:addingSaved?"linear-gradient(135deg,#34D399,#6EE7B7)":"linear-gradient(135deg,#22D3EE,#6EE7B7)",color:"#070D1A",border:"none",padding:"10px 24px",borderRadius:8,cursor:"pointer",fontWeight:800,fontSize:13}}>
+            {addingSaved?"✅ Médico adicionado!":"+ Adicionar médico"}
+          </button>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {medicos.map(m=>{
