@@ -129,7 +129,8 @@ export default function App() {
         <div><div style={{fontWeight:800,fontSize:14,color:"#F1F5F9"}}>GEO·TRACK</div><div style={{fontSize:9,color:s.muted,letterSpacing:1,fontWeight:600}}>ENDURA · BOSTON SCIENTIFIC</div></div>
       </div>
       <nav style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-        {[{id:"dashboard",label:"Dashboard",icon:"📊"},{id:"entrada",label:"Registrar",icon:"✏️"},{id:"historico",label:"Histórico",icon:"📅"},{id:"medicos",label:"Médicos",icon:"👨‍⚕️"}].map(tab=>(,{id:"geo",label:"Monitor GEO",icon:"🤖"}
+        p(tab=>({id:"dashboard",label:"Dashboard",icon:"📊"},{id:"geo",label:"Monitor GEO",icon:"🤖"}).map(tab=>(
+
 
           <button key={tab.id} onClick={()=>setView(tab.id)} style={{background:view===tab.id?"rgba(34,211,238,0.1)":"transparent",border:view===tab.id?`1px solid ${s.accent}`:"1px solid transparent",color:view===tab.id?s.accent:s.muted,padding:"6px 12px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:600}}>
             {tab.icon} {tab.label}
