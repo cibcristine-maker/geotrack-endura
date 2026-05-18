@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 
 const SUPA_URL = "https://ojbbjgqfjzygdenwtwrz.supabase.co";
-const SUPA_KEY = "REPLACE_WITH_YOUR_KEY";
-
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYmJqZ3Fmanp5Z2Rlbnd0d3J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzM0MTksImV4cCI6MjA5NDQ0OTQxOX0.aMFG3M9Ll5iGQZamREUK9LvN3YhK40RBg8R0gH5bVFg";
 const ACOES_BOOL = [
   { key: "faq_schema",         label: "FAQ Schema" },
   { key: "doctoralia",         label: "Doctoralia" },
