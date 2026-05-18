@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import GeoMonitor from "./GeoMonitor";
-import PerfilDigital from "./PerfilDigital";
+import PerfilDigital from "./PerfilDigital"; 
+import ImpactoAnalise from "./ImpactoAnalise";
+
 
 const SUPA_URL = "https://ojbbjgqfjzygdenwtwrz.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYmJqZ3Fmanp5Z2Rlbnd0d3J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzM0MTksImV4cCI6MjA5NDQ0OTQxOX0.aMFG3M9Ll5iGQZamREUK9LvN3YhK40RBg8R0gH5bVFg";
@@ -137,7 +139,8 @@ export default function App() {
         <div><div style={{fontWeight:800,fontSize:14,color:"#F1F5F9"}}>GEO·TRACK</div><div style={{fontSize:9,color:s.muted,letterSpacing:1,fontWeight:600}}>ENDURA · BOSTON SCIENTIFIC</div></div>
       </div>
       <nav style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-        {[{id:"dashboard",label:"Dashboard",icon:"📊"},{id:"entrada",label:"Registrar",icon:"✏️"},{id:"historico",label:"Histórico",icon:"📅"},{id:"medicos",label:"Médicos",icon:"👨‍⚕️"},{id:"geo",label:"Monitor GEO",icon:"🤖"},{id:"perfil",label:"Perfil Digital",icon:"🔧"}].map(tab=>(
+        {[{id:"dashboard",label:"Dashboard",icon:"📊"},{id:"entrada",label:"Registrar",icon:"✏️"},{id:"historico",label:"Histórico",icon:"📅"},{id:"medicos",label:"Médicos",icon:"👨‍⚕️"},{id:"geo",label:"Monitor GEO",icon:"🤖"},{id:"perfil",label:"Perfil Digital",icon:"🔧"},{id:"impacto",label:"Impacto",icon:"📊"}
+].map(tab=>(
           <button key={tab.id} onClick={()=>setView(tab.id)} style={{background:view===tab.id?"rgba(34,211,238,0.1)":"transparent",border:view===tab.id?`1px solid ${s.accent}`:"1px solid transparent",color:view===tab.id?s.accent:s.muted,padding:"6px 12px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:600}}>
             {tab.icon} {tab.label}
           </button>
@@ -282,6 +285,8 @@ export default function App() {
 
       {/* PERFIL DIGITAL */}
       {view==="perfil"&&<div><PerfilDigital medicos={medicos} s={s}/></div>}
+      {view==="impacto"&&<div><ImpactoAnalise/></div>}
+
 
     </div>
   </div>;
