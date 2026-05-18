@@ -3,7 +3,8 @@ import GeoMonitor from "./GeoMonitor";
 import PerfilDigital from "./PerfilDigital";
 
 const SUPA_URL = "https://ojbbjgqfjzygdenwtwrz.supabase.co";
-const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYmJqZ3Fmanp5Z2Rlbnd0d3J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTU3MzIsImV4cCI6MjA2MTA5MTczMn0.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYmJqZ3Fmanp5Z2Rlbnd0d3J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzM0MTksImV4cCI6MjA5NDQ0OTQxOX0.aMFG3M9Ll5iGQZamREUK9LvN3YhK40RBg8R0gH5bVFg";
+
 
 const supa = async (path, opts = {}) => {
   const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
