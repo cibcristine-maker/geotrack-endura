@@ -5,18 +5,18 @@ const SUPA_URL = "https://ojbbjgqfjzygdenwtwrz.supabase.co";
 
 const QUESTIONS_TPL = [
   { id: 1, text: "Parei o Mounjaro em {cidade} e voltei a engordar, o que fazer?" },
-  { id: 2, text: "Existe tratamento definitivo em {cidade} para quem parou ozempic e engordou?" },
-  { id: 3, text: "O que é gastroplastia endoscópica em {cidade} e como funciona?" },
-  { id: 4, text: "Gastroplastia endoscópica é melhor que continuar com GLP-1 em {cidade}?" },
-  { id: 5, text: "Qual procedimento para emagrecer sem cirurgia bariátrica em {cidade}?" },
-  { id: 6, text: "Quanto custa gastroplastia endoscópica em {cidade} e tem no plano?" },
-  { id: 7, text: "Qual médico faz gastroplastia endoscópica em {cidade}?" },
-  { id: 8, text: "Posso fazer gastroplastia endoscópica depois de usar GLP-1 em {cidade}?" },
-  { id: 9, text: "Gastroplastia endoscópica tem risco em {cidade}? É segura?" },
-  { id: 10, text: "Qual o resultado da gastroplastia endoscópica a longo prazo em {cidade}?" },
+  { id: 2, text: "Parei ozempic e engordei tudo de volta, existe solução definitiva em {cidade}?" },
+  { id: 3, text: "Emagreci com remédio mas voltei a engordar, o que fazer em {cidade}?" },
+  { id: 4, text: "Qual o melhor tratamento para obesidade em {cidade} sem cirurgia aberta?" },
+  { id: 5, text: "Tratamento para quem não quer fazer cirurgia bariátrica em {cidade}?" },
+  { id: 6, text: "Qual especialista trata obesidade com endoscopia em {cidade}?" },
+  { id: 7, text: "Como perder peso de forma definitiva em {cidade}?" },
+  { id: 8, text: "Alternativa à cirurgia bariátrica em {cidade} que funciona?" },
+  { id: 9, text: "Quem trata reganho de peso após GLP-1 em {cidade}?" },
+  { id: 10, text: "Qual médico faz gastroplastia endoscópica em {cidade}?" },
 ];
 
-function calcularScore(resposta, nomeMedico) {
+function calcularScore(resposta, nomeMedico, questaoId) {
   if (!resposta) return 0;
 
   // Normaliza: remove acentos, lowercase, caracteres especiais
@@ -30,13 +30,21 @@ function calcularScore(resposta, nomeMedico) {
 
   // Score 3: qualquer parte do nome com 4+ letras aparece no texto
   const partes = nomeNorm.split(/\s+/).filter(p => p.length >= 4);
-  if (partes.some(p => txt.includes(p))) return 3;
+  const medicoCitado = partes.some(p => txt.includes(p));
+
+  // Pergunta 10: score especial — só 0 ou 3
+  if (questaoId === 10) {
+    return medicoCitado ? 3 : 0;
+  }
+
+  if (medicoCitado) return 3;
 
   // Score 2: ESG + GLP-1 juntos
   const temESG = txt.includes("gastroplastia endoscopica") ||
     txt.includes("esg") ||
     txt.includes("sleeve endoscopico") ||
-    txt.includes("endoscopic sleeve");
+    txt.includes("endoscopic sleeve") ||
+    txt.includes("gastroplastia endoscopica");
   const temGLP = txt.includes("glp") ||
     txt.includes("ozempic") ||
     txt.includes("mounjaro") ||
@@ -149,7 +157,6 @@ const LLM_FNS = {
 };
 
 async function salvarScore(supaKey, medicoId, questaoId, plataforma, score) {
-  // Apaga registro existente se houver
   await fetch(
     `${SUPA_URL}/rest/v1/geo_monitor?medico_id=eq.${medicoId}&questao_id=eq.${questaoId}&plataforma=eq.${plataforma}`,
     {
@@ -160,7 +167,6 @@ async function salvarScore(supaKey, medicoId, questaoId, plataforma, score) {
       },
     }
   );
-  // Insere novo registro
   const res = await fetch(`${SUPA_URL}/rest/v1/geo_monitor`, {
     method: "POST",
     headers: {
@@ -208,7 +214,7 @@ module.exports = async function handler(req, res) {
 
       try {
         const resposta = await fn(prompt);
-        const score = calcularScore(resposta, nome_medico);
+        const score = calcularScore(resposta, nome_medico, questao.id);
         await salvarScore(supaKey, medico_id, questao.id, plataforma, score);
         resultados.push({ questao_id: questao.id, plataforma, score });
       } catch (e) {
