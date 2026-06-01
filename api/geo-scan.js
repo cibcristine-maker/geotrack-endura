@@ -18,21 +18,36 @@ const QUESTIONS_TPL = [
 
 function calcularScore(resposta, nomeMedico) {
   if (!resposta) return 0;
-  const txt = resposta.toLowerCase();
 
-  const partes = nomeMedico.toLowerCase()
-    .replace(/^dr\.?\s+|^dra\.?\s+/i, "")
-    .split(" ")
-    .filter(p => p.length >= 4);
+  // Normaliza: remove acentos, lowercase, caracteres especiais
+  const normalizar = str => str.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ");
+
+  const txt = normalizar(resposta);
+  const nomeNorm = normalizar(nomeMedico)
+    .replace(/^dr\.?\s+|^dra\.?\s+/i, "").trim();
+
+  // Score 3: qualquer parte do nome com 4+ letras aparece no texto
+  const partes = nomeNorm.split(/\s+/).filter(p => p.length >= 4);
   if (partes.some(p => txt.includes(p))) return 3;
 
-  const temESG = txt.includes("gastroplastia endoscópica") || txt.includes("esg") ||
-    txt.includes("sleeve endoscópico") || txt.includes("endoscopic sleeve");
-  const temGLP = txt.includes("glp-1") || txt.includes("ozempic") ||
-    txt.includes("mounjaro") || txt.includes("wegovy") ||
-    txt.includes("semaglutida") || txt.includes("tirzepatida");
+  // Score 2: ESG + GLP-1 juntos
+  const temESG = txt.includes("gastroplastia endoscopica") ||
+    txt.includes("esg") ||
+    txt.includes("sleeve endoscopico") ||
+    txt.includes("endoscopic sleeve");
+  const temGLP = txt.includes("glp") ||
+    txt.includes("ozempic") ||
+    txt.includes("mounjaro") ||
+    txt.includes("wegovy") ||
+    txt.includes("semaglutida") ||
+    txt.includes("tirzepatida");
   if (temESG && temGLP) return 2;
+
+  // Score 1: ESG mencionada
   if (temESG) return 1;
+
   return 0;
 }
 
