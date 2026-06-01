@@ -19,7 +19,6 @@ const PLATFORMS = [
   { id: "perplexity", label: "Perplexity" },
   { id: "claude", label: "Claude" },
   { id: "grok", label: "Grok" },
-  { id: "copilot", label: "Copilot" },
 ];
 
 const QUESTIONS_TPL = [
@@ -71,7 +70,6 @@ function AutoScanButton({ medico, accent, muted, card, border, onScanComplete })
     setScanning(true);
     setResultado(null);
     setErro(null);
-    setProgresso({ atual: 0, total: 60, plataforma: "Iniciando..." });
 
     try {
       const res = await fetch("/api/geo-scan", {
@@ -84,16 +82,16 @@ function AutoScanButton({ medico, accent, muted, card, border, onScanComplete })
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Erro no scan");
+        throw new Error(data.error || `Erro ${res.status}`);
       }
 
-      const data = await res.json();
       setResultado(data);
       if (onScanComplete) onScanComplete();
     } catch (e) {
-      setErro(e.message);
+      setErro(e.message || "Erro desconhecido");
     } finally {
       setScanning(false);
       setProgresso(null);
@@ -248,7 +246,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
     <div style={{ color: text }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <div style={{ fontSize: 11, letterSpacing: 2, color: accent, textTransform: "uppercase", fontFamily: "monospace" }}>GEO Intelligence · 6 Plataformas</div>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: accent, textTransform: "uppercase", fontFamily: "monospace" }}>GEO Intelligence · 5 Plataformas</div>
           <div style={{ fontSize: 13, color: muted, marginTop: 2 }}>10 perguntas com cidade do médico · {medicos.length} médicos</div>
         </div>
         <div style={{ display: "flex", gap: 4, background: card, padding: 4, borderRadius: 8, border: `1px solid ${border}` }}>
