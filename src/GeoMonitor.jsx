@@ -58,10 +58,9 @@ function getQuestions(cidade) {
   return QUESTIONS_TPL.map(q => ({ ...q, text: q.text.replace(/{cidade}/g, c) }));
 }
 
-// ─── COMPONENTE AUTO SCAN ────────────────────────────────────────────────────
+// ─── AUTO SCAN BUTTON ────────────────────────────────────────────────────────
 function AutoScanButton({ medico, accent, muted, card, border, onScanComplete }) {
   const [scanning, setScanning] = useState(false);
-  const [progresso, setProgresso] = useState(null); // { atual, total, plataforma }
   const [resultado, setResultado] = useState(null);
   const [erro, setErro] = useState(null);
 
@@ -83,99 +82,126 @@ function AutoScanButton({ medico, accent, muted, card, border, onScanComplete })
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || `Erro ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
       setResultado(data);
       if (onScanComplete) onScanComplete();
     } catch (e) {
       setErro(e.message || "Erro desconhecido");
     } finally {
       setScanning(false);
-      setProgresso(null);
     }
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <button
-        onClick={iniciarScan}
-        disabled={scanning || !medico}
-        style={{
-          padding: "8px 16px",
-          borderRadius: 8,
-          border: `1px solid ${scanning ? muted : accent}`,
-          background: scanning ? `${muted}22` : `${accent}22`,
-          color: scanning ? muted : accent,
-          cursor: scanning || !medico ? "not-allowed" : "pointer",
-          fontSize: 12,
-          fontWeight: 600,
-          letterSpacing: 1,
-          transition: "all 0.2s",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {scanning ? (
-          <>
-            <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span>
-            Analisando...
-          </>
-        ) : (
-          <>🤖 Auto Scan</>
-        )}
+      <button onClick={iniciarScan} disabled={scanning || !medico} style={{
+        padding: "8px 16px", borderRadius: 8, border: `1px solid ${scanning ? muted : accent}`,
+        background: scanning ? `${muted}22` : `${accent}22`, color: scanning ? muted : accent,
+        cursor: scanning || !medico ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600,
+        letterSpacing: 1, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
+      }}>
+        {scanning ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> Analisando...</> : <>🤖 Auto Scan</>}
       </button>
-
-      {scanning && progresso && (
-        <div style={{
-          fontSize: 11, color: muted, background: card,
-          border: `1px solid ${border}`, borderRadius: 6,
-          padding: "6px 10px", minWidth: 180,
-        }}>
-          <div style={{ marginBottom: 4 }}>
-            Consultando 6 LLMs × 10 perguntas
-          </div>
-          <div style={{
-            height: 3, background: `${accent}33`, borderRadius: 2, overflow: "hidden"
-          }}>
-            <div style={{
-              height: "100%", background: accent, borderRadius: 2,
-              width: "100%",
-              animation: "progress-pulse 1.5s ease-in-out infinite",
-            }} />
-          </div>
-        </div>
-      )}
-
       {resultado && (
-        <div style={{
-          fontSize: 11, padding: "6px 10px", borderRadius: 6,
-          background: "#d1fae522", border: "1px solid #10b98133", color: "#10b981",
-        }}>
-          ✅ Scan concluído · Score: {resultado.percentual}% · {resultado.total} registros salvos
-          {resultado.erros?.length > 0 && (
-            <span style={{ color: "#f59e0b" }}> · {resultado.erros.length} erros</span>
-          )}
+        <div style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "#d1fae522", border: "1px solid #10b98133", color: "#10b981" }}>
+          ✅ Scan concluído · Score: {resultado.percentual}% · {resultado.total} registros
+          {resultado.erros?.length > 0 && <span style={{ color: "#f59e0b" }}> · {resultado.erros.length} erros</span>}
         </div>
       )}
-
       {erro && (
-        <div style={{
-          fontSize: 11, padding: "6px 10px", borderRadius: 6,
-          background: "#fee2e222", border: "1px solid #ef444433", color: "#ef4444",
-        }}>
+        <div style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "#fee2e222", border: "1px solid #ef444433", color: "#ef4444" }}>
           ⚠️ {erro}
         </div>
       )}
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes progress-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-      `}</style>
+// ─── CARD DE DIAGNÓSTICO POR MÉDICO ─────────────────────────────────────────
+function DiagnosticoCard({ medico, scores, accent, muted, card, border, text }) {
+  if (!medico) return null;
+
+  // Score médio de todas as plataformas
+  const allScores = PLATFORMS.map(p => {
+    const vals = QUESTIONS_TPL.map(q => scores[medico.id]?.[q.id]?.[p.id] ?? null).filter(v => v !== null);
+    if (vals.length === 0) return null;
+    return { platform: p, pct: Math.round((vals.reduce((a, b) => a + b, 0) / (vals.length * 3)) * 100), count: vals.length };
+  }).filter(Boolean);
+
+  if (allScores.length === 0) return (
+    <div style={{ padding: "10px 14px", background: `${accent}08`, borderRadius: 8, border: `1px solid ${accent}22`, fontSize: 12, color: muted, marginBottom: 16 }}>
+      Nenhum dado ainda. Clique em Auto Scan para analisar.
+    </div>
+  );
+
+  const mediaGeral = Math.round(allScores.reduce((a, b) => a + b.pct, 0) / allScores.length);
+  const piorPlataforma = allScores.reduce((a, b) => a.pct < b.pct ? a : b);
+  const melhorPlataforma = allScores.reduce((a, b) => a.pct > b.pct ? a : b);
+
+  // Pergunta mais fraca (média entre todas as plataformas)
+  const perguntasScore = QUESTIONS_TPL.map(q => {
+    const vals = PLATFORMS.map(p => scores[medico.id]?.[q.id]?.[p.id] ?? null).filter(v => v !== null);
+    if (vals.length === 0) return null;
+    return { q, avg: vals.reduce((a, b) => a + b, 0) / vals.length };
+  }).filter(Boolean);
+
+  const piorPergunta = perguntasScore.length > 0 ? perguntasScore.reduce((a, b) => a.avg < b.avg ? a : b) : null;
+  const grade = scoreGrade(mediaGeral);
+
+  return (
+    <div style={{ marginBottom: 16, background: card, borderRadius: 10, border: `1px solid ${border}`, overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ padding: "12px 14px", borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 11, color: accent, letterSpacing: 2, textTransform: "uppercase", fontFamily: "monospace" }}>Diagnóstico Consolidado</div>
+          <div style={{ fontSize: 11, color: muted, marginTop: 2 }}>Média das {allScores.length} plataformas analisadas</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: grade.color, lineHeight: 1 }}>{mediaGeral}%</div>
+          <div style={{ fontSize: 11, color: grade.color, fontWeight: 600 }}>{grade.label}</div>
+        </div>
+      </div>
+
+      {/* Score por plataforma */}
+      <div style={{ padding: "10px 14px", borderBottom: `1px solid ${border}` }}>
+        <div style={{ fontSize: 11, color: muted, marginBottom: 8, letterSpacing: 1 }}>SCORE POR PLATAFORMA</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          {allScores.sort((a, b) => b.pct - a.pct).map(({ platform, pct }) => {
+            const g = scoreGrade(pct);
+            return (
+              <div key={platform.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ fontSize: 11, color: text, minWidth: 80 }}>{platform.label}</div>
+                <div style={{ flex: 1, height: 6, background: `${border}`, borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: g.color, borderRadius: 3, transition: "width 0.5s ease" }} />
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: g.color, minWidth: 36, textAlign: "right" }}>{pct}%</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Insights */}
+      <div style={{ padding: "10px 14px", display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 140, padding: "8px 10px", borderRadius: 6, background: "#fee2e222", border: "1px solid #ef444433" }}>
+          <div style={{ fontSize: 10, color: "#ef4444", fontWeight: 600, marginBottom: 3 }}>⚠️ MAIS FRACA</div>
+          <div style={{ fontSize: 12, color: text, fontWeight: 600 }}>{piorPlataforma.platform.label}</div>
+          <div style={{ fontSize: 11, color: muted }}>{piorPlataforma.pct}% de visibilidade</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 140, padding: "8px 10px", borderRadius: 6, background: "#d1fae522", border: "1px solid #10b98133" }}>
+          <div style={{ fontSize: 10, color: "#10b981", fontWeight: 600, marginBottom: 3 }}>✅ MAIS FORTE</div>
+          <div style={{ fontSize: 12, color: text, fontWeight: 600 }}>{melhorPlataforma.platform.label}</div>
+          <div style={{ fontSize: 11, color: muted }}>{melhorPlataforma.pct}% de visibilidade</div>
+        </div>
+        {piorPergunta && (
+          <div style={{ width: "100%", padding: "8px 10px", borderRadius: 6, background: "#fff7ed22", border: "1px solid #f59e0b33" }}>
+            <div style={{ fontSize: 10, color: "#f59e0b", fontWeight: 600, marginBottom: 3 }}>🎯 LACUNA PRIORITÁRIA</div>
+            <div style={{ fontSize: 11, color: text }}>Q{piorPergunta.q.id}: {piorPergunta.q.intent}</div>
+            <div style={{ fontSize: 10, color: muted, marginTop: 2 }}>Score médio: {piorPergunta.avg.toFixed(1)}/3 em todas as plataformas</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -189,6 +215,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
   const [medicoSel, setMedicoSel] = useState(null);
   const [plataformaSel, setPlataformaSel] = useState(0);
   const [busca, setBusca] = useState("");
+  const [rankOrdem, setRankOrdem] = useState("asc"); // asc = mais fracos primeiro
 
   const card = s.card || "#0A2342";
   const border = s.border || "#1e3a5f";
@@ -232,6 +259,19 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
     } catch (e) {}
   }
 
+  // Score consolidado (média de todas as plataformas)
+  function calcScoreConsolidado(mId) {
+    const vals = [];
+    PLATFORMS.forEach(p => {
+      QUESTIONS_TPL.forEach(q => {
+        const s = getScore(mId, q.id, p.id);
+        if (s !== null) vals.push(s);
+      });
+    });
+    if (vals.length === 0) return 0;
+    return Math.round((vals.reduce((a, b) => a + b, 0) / (vals.length * 3)) * 100);
+  }
+
   function calcGeoScore(mId, plIdx) {
     const pl = PLATFORMS[plIdx];
     const vals = QUESTIONS_TPL.map(q => getScore(mId, q.id, pl.id) ?? 0);
@@ -239,6 +279,18 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
   }
 
   const medicosFiltrados = medicos.filter(m => m.nome.toLowerCase().includes(busca.toLowerCase()));
+
+  // Ranking consolidado
+  const rankingConsolidado = [...medicos].map(m => ({
+    ...m,
+    scoreTotal: calcScoreConsolidado(m.id),
+    piorPlataforma: PLATFORMS.reduce((worst, p) => {
+      const vals = QUESTIONS_TPL.map(q => getScore(m.id, q.id, p.id) ?? null).filter(v => v !== null);
+      if (vals.length === 0) return worst;
+      const pct = Math.round((vals.reduce((a, b) => a + b, 0) / (vals.length * 3)) * 100);
+      return (!worst || pct < worst.pct) ? { label: p.label, pct } : worst;
+    }, null),
+  })).sort((a, b) => rankOrdem === "asc" ? a.scoreTotal - b.scoreTotal : b.scoreTotal - a.scoreTotal);
 
   if (loading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: accent }}>Carregando...</div>;
 
@@ -259,9 +311,10 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
         </div>
       </div>
 
+      {/* ── ABA POR MÉDICO ── */}
       {modo === "medico" && (
         <div>
-          <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={{ fontSize: 11, color: muted, marginBottom: 4, letterSpacing: 1 }}>MÉDICO</div>
               <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar médico..."
@@ -286,40 +339,35 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
             </div>
             {medicoSel && (
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 11, color: muted }}>GEO SCORE</div>
-                <div style={{ fontSize: 28, fontWeight: 700, color: scoreGrade(calcGeoScore(medicoSel.id, plataformaSel)).color }}>
+                <div style={{ fontSize: 11, color: muted }}>SCORE PLATAFORMA</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: scoreGrade(calcGeoScore(medicoSel.id, plataformaSel)).color }}>
                   {calcGeoScore(medicoSel.id, plataformaSel)}%
                 </div>
               </div>
             )}
           </div>
 
-          {/* ── BOTÃO AUTO SCAN ── */}
+          {/* DIAGNÓSTICO CONSOLIDADO */}
+          {medicoSel && (
+            <DiagnosticoCard medico={medicoSel} scores={scores} accent={accent} muted={muted} card={card} border={border} text={text} />
+          )}
+
+          {/* AUTO SCAN */}
           {medicoSel && (
             <div style={{
-              marginBottom: 16, padding: "12px 14px",
-              background: `${accent}0a`, borderRadius: 8,
-              border: `1px solid ${accent}33`,
-              display: "flex", alignItems: "center",
+              marginBottom: 16, padding: "12px 14px", background: `${accent}0a`, borderRadius: 8,
+              border: `1px solid ${accent}33`, display: "flex", alignItems: "center",
               justifyContent: "space-between", flexWrap: "wrap", gap: 10,
             }}>
               <div>
                 <div style={{ fontSize: 12, color: accent, fontWeight: 600 }}>Análise Automática</div>
-                <div style={{ fontSize: 11, color: muted, marginTop: 2 }}>
-                  Consulta as 6 LLMs com as 10 perguntas e preenche os scores automaticamente
-                </div>
+                <div style={{ fontSize: 11, color: muted, marginTop: 2 }}>Consulta as 5 LLMs automaticamente e atualiza o diagnóstico</div>
               </div>
-              <AutoScanButton
-                medico={medicoSel}
-                accent={accent}
-                muted={muted}
-                card={card}
-                border={border}
-                onScanComplete={fetchRegistros}
-              />
+              <AutoScanButton medico={medicoSel} accent={accent} muted={muted} card={card} border={border} onScanComplete={fetchRegistros} />
             </div>
           )}
 
+          {/* PERGUNTAS */}
           {medicoSel && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {getQuestions(medicoSel.cidade).map(q => {
@@ -359,10 +407,57 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
         </div>
       )}
 
+      {/* ── ABA POR PLATAFORMA ── */}
       {modo === "plataforma" && (
         <div>
+          {/* RANKING CONSOLIDADO */}
+          <div style={{ marginBottom: 20, background: card, borderRadius: 10, border: `1px solid ${border}`, overflow: "hidden" }}>
+            <div style={{ padding: "12px 14px", borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 11, color: accent, letterSpacing: 2, textTransform: "uppercase", fontFamily: "monospace" }}>Ranking Consolidado</div>
+                <div style={{ fontSize: 11, color: muted, marginTop: 2 }}>Média das 5 plataformas · ordenado por visibilidade</div>
+              </div>
+              <button onClick={() => setRankOrdem(o => o === "asc" ? "desc" : "asc")} style={{
+                padding: "5px 10px", borderRadius: 6, border: `1px solid ${border}`, background: "transparent",
+                color: muted, cursor: "pointer", fontSize: 11,
+              }}>
+                {rankOrdem === "asc" ? "↑ Mais fracos" : "↓ Mais fortes"}
+              </button>
+            </div>
+            <div style={{ padding: "8px 0" }}>
+              {rankingConsolidado.map((m, i) => {
+                const grade = scoreGrade(m.scoreTotal);
+                return (
+                  <div key={m.id} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "8px 14px",
+                    borderBottom: i < rankingConsolidado.length - 1 ? `1px solid ${border}22` : "none",
+                    flexWrap: "wrap",
+                  }}>
+                    <div style={{ fontSize: 12, color: muted, minWidth: 20, fontFamily: "monospace" }}>{i + 1}</div>
+                    <div style={{ flex: 1, minWidth: 120 }}>
+                      <div style={{ fontSize: 13, color: text, fontWeight: 500 }}>{m.nome}</div>
+                      {m.cidade && <div style={{ fontSize: 11, color: muted }}>{m.cidade}</div>}
+                    </div>
+                    <div style={{ flex: 2, minWidth: 100 }}>
+                      <div style={{ height: 6, background: `${border}`, borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{ width: `${m.scoreTotal}%`, height: "100%", background: grade.color, borderRadius: 3, transition: "width 0.5s ease" }} />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: grade.color, minWidth: 40, textAlign: "right" }}>{m.scoreTotal}%</div>
+                    {m.piorPlataforma && (
+                      <div style={{ fontSize: 10, color: "#ef4444", minWidth: 80, textAlign: "right" }}>
+                        ⚠️ {m.piorPlataforma.label}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* TABELA POR PLATAFORMA */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, color: muted, marginBottom: 8, letterSpacing: 1 }}>PLATAFORMA</div>
+            <div style={{ fontSize: 11, color: muted, marginBottom: 8, letterSpacing: 1 }}>DETALHE POR PLATAFORMA</div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {PLATFORMS.map((p, i) => (
                 <button key={p.id} onClick={() => setPlataformaSel(i)} style={{
