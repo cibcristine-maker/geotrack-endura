@@ -23,21 +23,26 @@ const PLATFORMS = [
 
 const QUESTIONS_TPL = [
   { id: 1, text: "Parei o Mounjaro em {cidade} e voltei a engordar, o que fazer?", intent: "Reganho pós-GLP-1", priority: "critica" },
-  { id: 2, text: "Existe tratamento definitivo em {cidade} para quem parou ozempic e engordou?", intent: "Frustração com dependência", priority: "critica" },
-  { id: 3, text: "O que é gastroplastia endoscópica em {cidade} e como funciona?", intent: "Descoberta local", priority: "media" },
-  { id: 4, text: "Gastroplastia endoscópica é melhor que continuar com GLP-1 em {cidade}?", intent: "Comparação direta", priority: "alta" },
-  { id: 5, text: "Qual procedimento para emagrecer sem cirurgia bariátrica em {cidade}?", intent: "Alternativa cirúrgica", priority: "media" },
-  { id: 6, text: "Quanto custa gastroplastia endoscópica em {cidade} e tem no plano?", intent: "Decisão de acesso", priority: "media" },
-  { id: 7, text: "Qual médico faz gastroplastia endoscópica em {cidade}?", intent: "Busca por especialista", priority: "critica" },
-  { id: 8, text: "Posso fazer gastroplastia endoscópica depois de usar GLP-1 em {cidade}?", intent: "Sequência de tratamento", priority: "alta" },
-  { id: 9, text: "Gastroplastia endoscópica tem risco em {cidade}? É segura?", intent: "Barreira de conversão", priority: "media" },
-  { id: 10, text: "Qual o resultado da gastroplastia endoscópica a longo prazo em {cidade}?", intent: "Evidência clínica", priority: "alta" },
+  { id: 2, text: "Parei ozempic e engordei tudo de volta, existe solução definitiva em {cidade}?", intent: "Reganho pós-GLP-1", priority: "critica" },
+  { id: 3, text: "Emagreci com remédio mas voltei a engordar, o que fazer em {cidade}?", intent: "Reganho pós-remédio", priority: "critica" },
+  { id: 4, text: "Qual o melhor tratamento para obesidade em {cidade} sem cirurgia aberta?", intent: "Alternativa cirúrgica", priority: "alta" },
+  { id: 5, text: "Tratamento para quem não quer fazer cirurgia bariátrica em {cidade}?", intent: "Alternativa cirúrgica", priority: "alta" },
+  { id: 6, text: "Qual especialista trata obesidade com endoscopia em {cidade}?", intent: "Busca por especialista", priority: "alta" },
+  { id: 7, text: "Como perder peso de forma definitiva em {cidade}?", intent: "Descoberta geral", priority: "media" },
+  { id: 8, text: "Alternativa à cirurgia bariátrica em {cidade} que funciona?", intent: "Alternativa cirúrgica", priority: "media" },
+  { id: 9, text: "Quem trata reganho de peso após GLP-1 em {cidade}?", intent: "Reganho pós-GLP-1", priority: "critica" },
+  { id: 10, text: "Qual médico faz gastroplastia endoscópica em {cidade}?", intent: "Busca direta", priority: "critica", scoreEspecial: true },
 ];
 
 const SCORE_OPTIONS = [
   { value: 0, label: "Invisível", color: "#ef4444", bg: "#fee2e2" },
   { value: 1, label: "ESG mencionada", color: "#f59e0b", bg: "#fef3c7" },
   { value: 2, label: "ESG + GLP-1", color: "#3b82f6", bg: "#dbeafe" },
+  { value: 3, label: "Médico citado", color: "#10b981", bg: "#d1fae5" },
+];
+
+const SCORE_OPTIONS_Q10 = [
+  { value: 0, label: "Não citado", color: "#ef4444", bg: "#fee2e2" },
   { value: 3, label: "Médico citado", color: "#10b981", bg: "#d1fae5" },
 ];
 
@@ -118,11 +123,10 @@ function AutoScanButton({ medico, accent, muted, card, border, onScanComplete })
   );
 }
 
-// ─── CARD DE DIAGNÓSTICO POR MÉDICO ─────────────────────────────────────────
+// ─── CARD DE DIAGNÓSTICO ─────────────────────────────────────────────────────
 function DiagnosticoCard({ medico, scores, accent, muted, card, border, text }) {
   if (!medico) return null;
 
-  // Score médio de todas as plataformas
   const allScores = PLATFORMS.map(p => {
     const vals = QUESTIONS_TPL.map(q => scores[medico.id]?.[q.id]?.[p.id] ?? null).filter(v => v !== null);
     if (vals.length === 0) return null;
@@ -139,7 +143,6 @@ function DiagnosticoCard({ medico, scores, accent, muted, card, border, text }) 
   const piorPlataforma = allScores.reduce((a, b) => a.pct < b.pct ? a : b);
   const melhorPlataforma = allScores.reduce((a, b) => a.pct > b.pct ? a : b);
 
-  // Pergunta mais fraca (média entre todas as plataformas)
   const perguntasScore = QUESTIONS_TPL.map(q => {
     const vals = PLATFORMS.map(p => scores[medico.id]?.[q.id]?.[p.id] ?? null).filter(v => v !== null);
     if (vals.length === 0) return null;
@@ -151,7 +154,6 @@ function DiagnosticoCard({ medico, scores, accent, muted, card, border, text }) 
 
   return (
     <div style={{ marginBottom: 16, background: card, borderRadius: 10, border: `1px solid ${border}`, overflow: "hidden" }}>
-      {/* Header */}
       <div style={{ padding: "12px 14px", borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div>
           <div style={{ fontSize: 11, color: accent, letterSpacing: 2, textTransform: "uppercase", fontFamily: "monospace" }}>Diagnóstico Consolidado</div>
@@ -163,7 +165,6 @@ function DiagnosticoCard({ medico, scores, accent, muted, card, border, text }) 
         </div>
       </div>
 
-      {/* Score por plataforma */}
       <div style={{ padding: "10px 14px", borderBottom: `1px solid ${border}` }}>
         <div style={{ fontSize: 11, color: muted, marginBottom: 8, letterSpacing: 1 }}>SCORE POR PLATAFORMA</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -182,7 +183,6 @@ function DiagnosticoCard({ medico, scores, accent, muted, card, border, text }) 
         </div>
       </div>
 
-      {/* Insights */}
       <div style={{ padding: "10px 14px", display: "flex", gap: 8, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 140, padding: "8px 10px", borderRadius: 6, background: "#fee2e222", border: "1px solid #ef444433" }}>
           <div style={{ fontSize: 10, color: "#ef4444", fontWeight: 600, marginBottom: 3 }}>⚠️ MAIS FRACA</div>
@@ -215,7 +215,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
   const [medicoSel, setMedicoSel] = useState(null);
   const [plataformaSel, setPlataformaSel] = useState(0);
   const [busca, setBusca] = useState("");
-  const [rankOrdem, setRankOrdem] = useState("asc"); // asc = mais fracos primeiro
+  const [rankOrdem, setRankOrdem] = useState("asc");
 
   const card = s.card || "#0A2342";
   const border = s.border || "#1e3a5f";
@@ -259,7 +259,6 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
     } catch (e) {}
   }
 
-  // Score consolidado (média de todas as plataformas)
   function calcScoreConsolidado(mId) {
     const vals = [];
     PLATFORMS.forEach(p => {
@@ -280,7 +279,6 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
 
   const medicosFiltrados = medicos.filter(m => m.nome.toLowerCase().includes(busca.toLowerCase()));
 
-  // Ranking consolidado
   const rankingConsolidado = [...medicos].map(m => ({
     ...m,
     scoreTotal: calcScoreConsolidado(m.id),
@@ -347,12 +345,8 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
             )}
           </div>
 
-          {/* DIAGNÓSTICO CONSOLIDADO */}
-          {medicoSel && (
-            <DiagnosticoCard medico={medicoSel} scores={scores} accent={accent} muted={muted} card={card} border={border} text={text} />
-          )}
+          {medicoSel && <DiagnosticoCard medico={medicoSel} scores={scores} accent={accent} muted={muted} card={card} border={border} text={text} />}
 
-          {/* AUTO SCAN */}
           {medicoSel && (
             <div style={{
               marginBottom: 16, padding: "12px 14px", background: `${accent}0a`, borderRadius: 8,
@@ -367,15 +361,20 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
             </div>
           )}
 
-          {/* PERGUNTAS */}
           {medicoSel && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {getQuestions(medicoSel.cidade).map(q => {
                 const pl = PLATFORMS[plataformaSel];
                 const current = getScore(medicoSel.id, q.id, pl.id);
                 const pc = priorityStyle[q.priority];
+                const isQ10 = q.scoreEspecial;
+                const opcoes = isQ10 ? SCORE_OPTIONS_Q10 : SCORE_OPTIONS;
                 return (
-                  <div key={q.id} style={{ background: card, borderRadius: 8, border: `1px solid ${border}`, padding: "12px 14px" }}>
+                  <div key={q.id} style={{
+                    background: card, borderRadius: 8,
+                    border: `1px solid ${isQ10 ? accent + "44" : border}`,
+                    padding: "12px 14px"
+                  }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 12, color: muted, minWidth: 22, fontFamily: "monospace", paddingTop: 2 }}>{String(q.id).padStart(2, "0")}</span>
                       <div style={{ flex: 1, minWidth: 160 }}>
@@ -383,10 +382,11 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <span style={{ fontSize: 11, color: muted }}>{q.intent}</span>
                           <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10, background: pc.bg, color: pc.text, fontWeight: 600 }}>{q.priority}</span>
+                          {isQ10 && <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10, background: `${accent}22`, color: accent, fontWeight: 600 }}>score 0 ou 3</span>}
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                        {SCORE_OPTIONS.map(opt => (
+                        {opcoes.map(opt => (
                           <button key={opt.value} onClick={() => setScore(medicoSel.id, q.id, pl.id, opt.value)} title={opt.label}
                             style={{
                               width: 30, height: 30, borderRadius: 6, border: "2px solid",
@@ -410,7 +410,6 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
       {/* ── ABA POR PLATAFORMA ── */}
       {modo === "plataforma" && (
         <div>
-          {/* RANKING CONSOLIDADO */}
           <div style={{ marginBottom: 20, background: card, borderRadius: 10, border: `1px solid ${border}`, overflow: "hidden" }}>
             <div style={{ padding: "12px 14px", borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
@@ -445,9 +444,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: grade.color, minWidth: 40, textAlign: "right" }}>{m.scoreTotal}%</div>
                     {m.piorPlataforma && (
-                      <div style={{ fontSize: 10, color: "#ef4444", minWidth: 80, textAlign: "right" }}>
-                        ⚠️ {m.piorPlataforma.label}
-                      </div>
+                      <div style={{ fontSize: 10, color: "#ef4444", minWidth: 80, textAlign: "right" }}>⚠️ {m.piorPlataforma.label}</div>
                     )}
                   </div>
                 );
@@ -455,7 +452,6 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
             </div>
           </div>
 
-          {/* TABELA POR PLATAFORMA */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, color: muted, marginBottom: 8, letterSpacing: 1 }}>DETALHE POR PLATAFORMA</div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -499,6 +495,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
                       {QUESTIONS_TPL.map(q => {
                         const current = getScore(m.id, q.id, pl.id);
                         const opt = current !== null ? SCORE_OPTIONS[current] : null;
+                        const isQ10 = q.scoreEspecial;
                         return (
                           <td key={q.id} style={{ padding: "4px", textAlign: "center" }}>
                             <select value={current ?? ""} onChange={e => setScore(m.id, q.id, pl.id, Number(e.target.value))}
@@ -507,7 +504,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
                                 color: opt ? opt.color : muted, borderRadius: 4, padding: "3px", fontSize: 11, cursor: "pointer"
                               }}>
                               <option value="">—</option>
-                              {SCORE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.value}</option>)}
+                              {(isQ10 ? SCORE_OPTIONS_Q10 : SCORE_OPTIONS).map(o => <option key={o.value} value={o.value}>{o.value}</option>)}
                             </select>
                           </td>
                         );
@@ -531,7 +528,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
       )}
 
       <div style={{ marginTop: 16, padding: "10px 14px", background: `${accent}11`, borderRadius: 8, fontSize: 12, color: muted, border: `1px solid ${accent}33` }}>
-        <strong style={{ color: accent }}>Escala:</strong> 0 Invisível · 1 ESG mencionada · 2 ESG+GLP-1 · 3 Médico citado por nome
+        <strong style={{ color: accent }}>Escala:</strong> 0 Invisível · 1 ESG mencionada · 2 ESG+GLP-1 · 3 Médico citado por nome · Q10: apenas 0 ou 3
       </div>
     </div>
   );
