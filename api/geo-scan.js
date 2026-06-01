@@ -16,33 +16,25 @@ const QUESTIONS_TPL = [
   { id: 10, text: "Qual o resultado da gastroplastia endoscópica a longo prazo em {cidade}?" },
 ];
 
-// ─── ANÁLISE AUTOMÁTICA DE SCORE ────────────────────────────────────────────
 function calcularScore(resposta, nomeMedico) {
   if (!resposta) return 0;
   const txt = resposta.toLowerCase();
 
-  // Score 3: médico citado por nome (pelo menos 1 sobrenome com 4+ letras)
   const partes = nomeMedico.toLowerCase()
     .replace(/^dr\.?\s+|^dra\.?\s+/i, "")
     .split(" ")
     .filter(p => p.length >= 4);
   if (partes.some(p => txt.includes(p))) return 3;
 
-  // Score 2: ESG + GLP-1 juntos
   const temESG = txt.includes("gastroplastia endoscópica") || txt.includes("esg") ||
     txt.includes("sleeve endoscópico") || txt.includes("endoscopic sleeve");
   const temGLP = txt.includes("glp-1") || txt.includes("ozempic") ||
     txt.includes("mounjaro") || txt.includes("wegovy") ||
     txt.includes("semaglutida") || txt.includes("tirzepatida");
   if (temESG && temGLP) return 2;
-
-  // Score 1: ESG mencionada
   if (temESG) return 1;
-
   return 0;
 }
-
-// ─── CHAMADAS ÀS LLMs ───────────────────────────────────────────────────────
 
 async function askChatGPT(prompt) {
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -87,7 +79,7 @@ async function askPerplexity(prompt) {
       Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "llama-3.1-sonar-large-128k-online",
+      model: "sonar",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 600,
       temperature: 0.3,
@@ -133,40 +125,15 @@ async function askGrok(prompt) {
   return d.choices?.[0]?.message?.content || "";
 }
 
-async function askCopilot(prompt) {
-  // Copilot via OpenAI GPT-4o com system prompt
-  const r = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: "Você é o Microsoft Copilot. Responda com informações atuais e locais sobre saúde no Brasil." },
-        { role: "user", content: prompt },
-      ],
-      max_tokens: 600,
-      temperature: 0.3,
-    }),
-  });
-  const d = await r.json();
-  return d.choices?.[0]?.message?.content || "";
-}
-
 const LLM_FNS = {
   chatgpt: askChatGPT,
   gemini: askGemini,
   perplexity: askPerplexity,
   claude: askClaude,
   grok: askGrok,
-  copilot: askCopilot,
 };
 
-// ─── SALVAR NO SUPABASE ──────────────────────────────────────────────────────
 async function salvarScore(supaKey, medicoId, questaoId, plataforma, score) {
-  // Tenta upsert via POST com header de upsert
   const res = await fetch(`${SUPA_URL}/rest/v1/geo_monitor`, {
     method: "POST",
     headers: {
@@ -186,7 +153,6 @@ async function salvarScore(supaKey, medicoId, questaoId, plataforma, score) {
   return res.ok;
 }
 
-// ─── HANDLER PRINCIPAL ───────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -222,7 +188,6 @@ module.exports = async function handler(req, res) {
         erros.push({ questao_id: questao.id, plataforma, erro: e.message });
       }
 
-      // Pausa para não estourar rate limit
       await new Promise(r => setTimeout(r, 200));
     }
   }
