@@ -1,5 +1,5 @@
 // src/MediaMonitor.jsx
-// GeoTrack — Aba de monitoramento de mídia sobre obesidade/ESG
+// GeoTrack — Media Monitor com busca por mercado + médicos parceiros
 
 import { useState, useEffect, useCallback } from "react";
 
@@ -8,13 +8,7 @@ const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 async function supaFetch(path, opts = {}) {
   const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
-    headers: {
-      apikey: SUPA_KEY,
-      Authorization: `Bearer ${SUPA_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: opts.prefer || "return=representation",
-      ...opts.headers,
-    },
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", Prefer: opts.prefer || "return=representation", ...opts.headers },
     ...opts,
   });
   if (!res.ok) throw new Error(await res.text());
@@ -27,6 +21,7 @@ const TAG_COLORS = {
   "BIB": "#A78BFA",
   "GLP-1/Mercado": "#FCD34D",
   "Mercado": "#34D399",
+  "Médico Parceiro": "#F97316",
 };
 
 const RELEVANCIA_CONFIG = {
@@ -37,8 +32,7 @@ const RELEVANCIA_CONFIG = {
 
 function formatDate(d) {
   if (!d) return "";
-  const dt = new Date(d);
-  return dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function ArticleCard({ article, s }) {
@@ -47,105 +41,41 @@ function ArticleCard({ article, s }) {
   const rel = RELEVANCIA_CONFIG[article.relevancia] || RELEVANCIA_CONFIG.media;
 
   return (
-    <div style={{
-      background: s.card,
-      border: `1px solid ${s.border}`,
-      borderRadius: 12,
-      padding: "14px 16px",
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-      transition: "border-color 0.2s",
-    }}
-    onMouseEnter={e => e.currentTarget.style.borderColor = tagColor}
-    onMouseLeave={e => e.currentTarget.style.borderColor = s.border}
+    <div style={{ background: s.card, border: `1px solid ${s.border}`, borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8, transition: "border-color 0.2s" }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = tagColor}
+      onMouseLeave={e => e.currentTarget.style.borderColor = s.border}
     >
-      {/* Header: tag + relevância + data */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-        <span style={{
-          background: `${tagColor}20`,
-          color: tagColor,
-          fontSize: 10,
-          fontWeight: 700,
-          padding: "2px 8px",
-          borderRadius: 99,
-          border: `1px solid ${tagColor}40`,
-          textTransform: "uppercase",
-          letterSpacing: "0.5px",
-        }}>{tag}</span>
-        <span style={{
-          background: rel.bg,
-          color: rel.color,
-          fontSize: 10,
-          fontWeight: 700,
-          padding: "2px 8px",
-          borderRadius: 99,
-          border: `1px solid ${rel.color}40`,
-        }}>● {rel.label}</span>
-        <span style={{ color: s.muted, fontSize: 11, marginLeft: "auto" }}>
-          {formatDate(article.data_publicacao)}
-        </span>
+        <span style={{ background: `${tagColor}20`, color: tagColor, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, border: `1px solid ${tagColor}40`, textTransform: "uppercase", letterSpacing: "0.5px" }}>{tag}</span>
+        {article.medico_nome && (
+          <span style={{ background: "rgba(249,115,22,0.12)", color: "#F97316", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, border: "1px solid rgba(249,115,22,0.3)" }}>
+            👨‍⚕️ {article.medico_nome}
+          </span>
+        )}
+        <span style={{ background: rel.bg, color: rel.color, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, border: `1px solid ${rel.color}40` }}>● {rel.label}</span>
+        <span style={{ color: s.muted, fontSize: 11, marginLeft: "auto" }}>{formatDate(article.data_publicacao)}</span>
       </div>
 
-      {/* Título */}
-      <a
-        href={article.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          color: "#F1F5F9",
-          fontWeight: 700,
-          fontSize: 13,
-          lineHeight: 1.4,
-          textDecoration: "none",
-          display: "block",
-        }}
+      <a href={article.url} target="_blank" rel="noopener noreferrer"
+        style={{ color: "#F1F5F9", fontWeight: 700, fontSize: 13, lineHeight: 1.4, textDecoration: "none", display: "block" }}
         onMouseEnter={e => e.currentTarget.style.color = tagColor}
         onMouseLeave={e => e.currentTarget.style.color = "#F1F5F9"}
       >
         {article.titulo}
       </a>
 
-      {/* Descrição */}
       {article.descricao && (
-        <p style={{
-          color: s.muted,
-          fontSize: 12,
-          lineHeight: 1.5,
-          margin: 0,
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}>
+        <p style={{ color: s.muted, fontSize: 12, lineHeight: 1.5, margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
           {article.descricao}
         </p>
       )}
 
-      {/* Footer: fonte + link */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
-        <span style={{
-          color: s.muted,
-          fontSize: 11,
-          background: "rgba(255,255,255,0.04)",
-          border: `1px solid ${s.border}`,
-          padding: "2px 8px",
-          borderRadius: 6,
-        }}>
+        <span style={{ color: s.muted, fontSize: 11, background: "rgba(255,255,255,0.04)", border: `1px solid ${s.border}`, padding: "2px 8px", borderRadius: 6 }}>
           📰 {article.fonte}
         </span>
-        <a
-          href={article.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: tagColor,
-            fontSize: 11,
-            fontWeight: 600,
-            textDecoration: "none",
-            marginLeft: "auto",
-          }}
-        >
+        <a href={article.url} target="_blank" rel="noopener noreferrer"
+          style={{ color: tagColor, fontSize: 11, fontWeight: 600, textDecoration: "none", marginLeft: "auto" }}>
           Ler artigo →
         </a>
       </div>
@@ -154,277 +84,185 @@ function ArticleCard({ article, s }) {
 }
 
 export default function MediaMonitor({ s }) {
-  const [articles, setArticles]       = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [scanning, setScanning]       = useState(false);
-  const [error, setError]             = useState(null);
-  const [scanMsg, setScanMsg]         = useState(null);
-  const [filterTag, setFilterTag]     = useState("todos");
-  const [filterRel, setFilterRel]     = useState("todos");
-  const [searchText, setSearchText]   = useState("");
+  const [articles, setArticles]     = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [scanning, setScanning]     = useState(false);
+  const [scanMode, setScanMode]     = useState("all"); // "all" | "market" | "doctors"
+  const [error, setError]           = useState(null);
+  const [scanMsg, setScanMsg]       = useState(null);
+  const [filterTag, setFilterTag]   = useState("todos");
+  const [filterRel, setFilterRel]   = useState("todos");
+  const [filterMedico, setFilterMedico] = useState("todos");
+  const [searchText, setSearchText] = useState("");
+  const [activeTab, setActiveTab]   = useState("mercado"); // "mercado" | "medicos"
 
   const fetchArticles = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await supaFetch(
-        "media_alerts?select=*&order=data_publicacao.desc,criado_em.desc&limit=100"
-      );
+      setLoading(true); setError(null);
+      const data = await supaFetch("media_alerts?select=*&order=data_publicacao.desc,criado_em.desc&limit=200");
       setArticles(data || []);
-    } catch (err) {
-      setError("Erro ao carregar notícias: " + err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError("Erro ao carregar: " + err.message); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchArticles(); }, [fetchArticles]);
 
   const handleScan = async () => {
-    setScanning(true);
-    setScanMsg(null);
-    setError(null);
+    setScanning(true); setScanMsg(null); setError(null);
     try {
-      const res = await fetch("/api/media-monitor");
+      const res = await fetch(`/api/media-monitor?mode=${scanMode}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setScanMsg(`✅ ${data.total} artigo(s) encontrado(s) e salvos`);
+      const erroMsg = data.errors?.length ? ` (${data.errors.length} erros)` : "";
+      setScanMsg(`✅ ${data.total} artigo(s) encontrado(s) e salvos${erroMsg}`);
       await fetchArticles();
-    } catch (err) {
-      setError("Erro na varredura: " + err.message);
-    } finally {
-      setScanning(false);
-    }
+    } catch (err) { setError("Erro na varredura: " + err.message); }
+    finally { setScanning(false); }
   };
 
-  // Filtros aplicados
-  const filtered = articles.filter(a => {
-    const matchTag = filterTag === "todos" || a.tag === filterTag;
-    const matchRel = filterRel === "todos" || a.relevancia === filterRel;
+  // Artigos de mercado (tudo exceto Médico Parceiro)
+  const marketArticles = articles.filter(a => a.tag !== "Médico Parceiro");
+  // Artigos de médicos
+  const doctorArticles = articles.filter(a => a.tag === "Médico Parceiro");
+  // Médicos únicos com citações
+  const medicosComCitacoes = [...new Set(doctorArticles.map(a => a.medico_nome).filter(Boolean))];
+
+  // Filtros para a aba ativa
+  const baseArticles = activeTab === "medicos" ? doctorArticles : marketArticles;
+  const filtered = baseArticles.filter(a => {
+    const matchTag    = filterTag === "todos" || a.tag === filterTag;
+    const matchRel    = filterRel === "todos" || a.relevancia === filterRel;
+    const matchMedico = filterMedico === "todos" || a.medico_nome === filterMedico;
     const matchSearch = !searchText ||
       a.titulo?.toLowerCase().includes(searchText.toLowerCase()) ||
       a.descricao?.toLowerCase().includes(searchText.toLowerCase()) ||
-      a.fonte?.toLowerCase().includes(searchText.toLowerCase());
-    return matchTag && matchRel && matchSearch;
+      a.fonte?.toLowerCase().includes(searchText.toLowerCase()) ||
+      a.medico_nome?.toLowerCase().includes(searchText.toLowerCase());
+    return matchTag && matchRel && matchMedico && matchSearch;
   });
 
-  // Tags únicas presentes
-  const tagsPresentes = [...new Set(articles.map(a => a.tag).filter(Boolean))];
+  const tagsPresentes = [...new Set(marketArticles.map(a => a.tag).filter(Boolean))];
 
-  // Contadores por relevância
-  const counts = {
-    alta:  articles.filter(a => a.relevancia === "alta").length,
-    media: articles.filter(a => a.relevancia === "media").length,
-    baixa: articles.filter(a => a.relevancia === "baixa").length,
-  };
+  const tabStyle = (tab) => ({
+    padding: "7px 16px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700,
+    background: activeTab === tab ? "rgba(34,211,238,0.12)" : "transparent",
+    border: activeTab === tab ? "1px solid rgba(34,211,238,0.4)" : "1px solid transparent",
+    color: activeTab === tab ? "#22D3EE" : "#64748B",
+  });
 
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 4, height: 24, background: "linear-gradient(to bottom,#22D3EE,#6EE7B7)", borderRadius: 2 }} />
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#F1F5F9" }}>
-            📰 Media Monitor
-          </h2>
-          <div style={{ color: s.muted, fontSize: 11, marginTop: 2 }}>
-            Publicações sobre obesidade, ESG, GLP-1 e endobariatria
-          </div>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#F1F5F9" }}>📰 Media Monitor</h2>
+          <div style={{ color: s.muted, fontSize: 11, marginTop: 2 }}>Publicações sobre obesidade, ESG, GLP-1 e médicos parceiros</div>
         </div>
-        <button
-          onClick={handleScan}
-          disabled={scanning}
-          style={{
-            marginLeft: "auto",
-            background: scanning
-              ? "rgba(34,211,238,0.1)"
-              : "linear-gradient(135deg,#22D3EE,#6EE7B7)",
-            color: scanning ? s.accent : "#070D1A",
-            border: scanning ? `1px solid ${s.accent}` : "none",
-            padding: "9px 18px",
-            borderRadius: 8,
-            cursor: scanning ? "not-allowed" : "pointer",
-            fontWeight: 800,
-            fontSize: 12,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {scanning ? "🔍 Buscando..." : "🔄 Varrer agora"}
-        </button>
+        {/* Botão varrer + seletor de modo */}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          <select value={scanMode} onChange={e => setScanMode(e.target.value)}
+            style={{ background: "#070D1A", border: `1px solid ${s.border2}`, color: s.muted, padding: "7px 10px", borderRadius: 7, fontSize: 11 }}>
+            <option value="all">Tudo</option>
+            <option value="market">Só mercado</option>
+            <option value="doctors">Só médicos</option>
+          </select>
+          <button onClick={handleScan} disabled={scanning} style={{
+            background: scanning ? "rgba(34,211,238,0.1)" : "linear-gradient(135deg,#22D3EE,#6EE7B7)",
+            color: scanning ? "#22D3EE" : "#070D1A",
+            border: scanning ? "1px solid #22D3EE" : "none",
+            padding: "9px 16px", borderRadius: 8, cursor: scanning ? "not-allowed" : "pointer",
+            fontWeight: 800, fontSize: 12, whiteSpace: "nowrap",
+          }}>
+            {scanning ? "🔍 Buscando..." : "🔄 Varrer agora"}
+          </button>
+        </div>
       </div>
 
-      {/* Status messages */}
-      {scanMsg && (
-        <div style={{
-          background: "rgba(52,211,153,0.1)",
-          border: "1px solid rgba(52,211,153,0.3)",
-          borderRadius: 8,
-          padding: "10px 14px",
-          color: "#34D399",
-          fontSize: 12,
-          fontWeight: 600,
-          marginBottom: 16,
-        }}>
-          {scanMsg}
-        </div>
-      )}
-      {error && (
-        <div style={{
-          background: "rgba(248,113,113,0.1)",
-          border: "1px solid rgba(248,113,113,0.3)",
-          borderRadius: 8,
-          padding: "10px 14px",
-          color: "#F87171",
-          fontSize: 12,
-          marginBottom: 16,
-        }}>
-          {error}
-        </div>
-      )}
+      {/* Mensagens */}
+      {scanMsg && <div style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.3)", borderRadius: 8, padding: "10px 14px", color: "#34D399", fontSize: 12, fontWeight: 600, marginBottom: 14 }}>{scanMsg}</div>}
+      {error && <div style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 8, padding: "10px 14px", color: "#F87171", fontSize: 12, marginBottom: 14 }}>{error}</div>}
 
-      {/* KPI cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 20 }}>
+      {/* KPIs */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 16 }}>
         {[
-          { label: "Alta relevância", count: counts.alta, color: "#34D399", icon: "🔥" },
-          { label: "Média relevância", count: counts.media, color: "#FCD34D", icon: "📌" },
-          { label: "Total encontrado", count: articles.length, color: "#22D3EE", icon: "📰" },
+          { label: "Mercado", count: marketArticles.length, color: "#22D3EE", icon: "📰" },
+          { label: "Médicos citados", count: doctorArticles.length, color: "#F97316", icon: "👨‍⚕️" },
+          { label: "Médicos distintos", count: medicosComCitacoes.length, color: "#A78BFA", icon: "🏆" },
+          { label: "Alta relevância", count: articles.filter(a => a.relevancia === "alta").length, color: "#34D399", icon: "🔥" },
         ].map(({ label, count, color, icon }) => (
-          <div key={label} style={{
-            background: s.card,
-            border: `1px solid ${s.border}`,
-            borderRadius: 10,
-            padding: "12px 14px",
-          }}>
+          <div key={label} style={{ background: s.card, border: `1px solid ${s.border}`, borderRadius: 10, padding: "12px 14px" }}>
             <div style={{ color: s.muted, fontSize: 10, fontWeight: 600, marginBottom: 4 }}>{icon} {label}</div>
-            <div style={{ color, fontSize: 22, fontWeight: 800 }}>{count}</div>
+            <div style={{ color, fontSize: 20, fontWeight: 800 }}>{count}</div>
           </div>
         ))}
       </div>
 
-      {/* Aviso de configuração */}
-      {articles.length === 0 && !loading && (
-        <div style={{
-          background: "rgba(252,211,77,0.07)",
-          border: "1px solid rgba(252,211,77,0.25)",
-          borderRadius: 10,
-          padding: "16px 18px",
-          marginBottom: 20,
-          color: "#FCD34D",
-          fontSize: 12,
-          lineHeight: 1.6,
-        }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>⚙️ Configuração necessária</div>
-          <div>Para usar o Media Monitor, adicione a variável de ambiente <code style={{ background: "rgba(255,255,255,0.08)", padding: "1px 5px", borderRadius: 4 }}>NEWSDATA_API_KEY</code> no seu projeto Vercel.</div>
-          <div style={{ marginTop: 6 }}>1. Acesse <a href="https://newsdata.io" target="_blank" rel="noopener noreferrer" style={{ color: "#22D3EE" }}>newsdata.io</a> → crie conta gratuita → copie a API Key</div>
-          <div>2. No Vercel → Settings → Environment Variables → adicione <code style={{ background: "rgba(255,255,255,0.08)", padding: "1px 5px", borderRadius: 4 }}>NEWSDATA_API_KEY</code></div>
-          <div>3. Clique em <strong>"Varrer agora"</strong> para a primeira busca</div>
+      {/* Tabs Mercado / Médicos */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <button style={tabStyle("mercado")} onClick={() => { setActiveTab("mercado"); setFilterMedico("todos"); }}>
+          📰 Mercado ({marketArticles.length})
+        </button>
+        <button style={tabStyle("medicos")} onClick={() => { setActiveTab("medicos"); setFilterTag("todos"); }}>
+          👨‍⚕️ Médicos Parceiros ({doctorArticles.length})
+          {doctorArticles.length > 0 && <span style={{ marginLeft: 4, background: "#F97316", color: "#fff", borderRadius: 99, padding: "0 5px", fontSize: 10 }}>●</span>}
+        </button>
+      </div>
+
+      {/* Alert médicos sem citações */}
+      {activeTab === "medicos" && doctorArticles.length === 0 && !loading && (
+        <div style={{ background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 10, padding: "14px 16px", color: "#F97316", fontSize: 12, marginBottom: 14 }}>
+          Nenhuma citação de médicos encontrada ainda. Clique em <strong>Varrer agora</strong> → <strong>Tudo</strong> ou <strong>Só médicos</strong>.
         </div>
       )}
 
       {/* Filtros */}
       {articles.length > 0 && (
-        <div style={{
-          background: s.card,
-          border: `1px solid ${s.border}`,
-          borderRadius: 10,
-          padding: "12px 14px",
-          marginBottom: 16,
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 10,
-          alignItems: "center",
-        }}>
-          {/* Search */}
-          <input
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-            placeholder="🔍 Buscar nos artigos..."
-            style={{
-              background: "#070D1A",
-              border: `1px solid ${s.border2}`,
-              color: s.text,
-              padding: "7px 12px",
-              borderRadius: 7,
-              fontSize: 12,
-              flex: "1 1 180px",
-              minWidth: 160,
-            }}
-          />
+        <div style={{ background: s.card, border: `1px solid ${s.border}`, borderRadius: 10, padding: "12px 14px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <input value={searchText} onChange={e => setSearchText(e.target.value)} placeholder="🔍 Buscar..."
+            style={{ background: "#070D1A", border: `1px solid ${s.border2}`, color: s.text, padding: "7px 12px", borderRadius: 7, fontSize: 12, flex: "1 1 160px" }} />
 
-          {/* Tag filter */}
-          <select
-            value={filterTag}
-            onChange={e => setFilterTag(e.target.value)}
-            style={{
-              background: "#070D1A",
-              border: `1px solid ${s.border2}`,
-              color: s.text,
-              padding: "7px 10px",
-              borderRadius: 7,
-              fontSize: 12,
-              flex: "0 0 auto",
-            }}
-          >
-            <option value="todos">Todos os temas</option>
-            {tagsPresentes.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          {activeTab === "mercado" && (
+            <select value={filterTag} onChange={e => setFilterTag(e.target.value)}
+              style={{ background: "#070D1A", border: `1px solid ${s.border2}`, color: s.text, padding: "7px 10px", borderRadius: 7, fontSize: 12 }}>
+              <option value="todos">Todos os temas</option>
+              {tagsPresentes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
 
-          {/* Relevância filter */}
-          <select
-            value={filterRel}
-            onChange={e => setFilterRel(e.target.value)}
-            style={{
-              background: "#070D1A",
-              border: `1px solid ${s.border2}`,
-              color: s.text,
-              padding: "7px 10px",
-              borderRadius: 7,
-              fontSize: 12,
-              flex: "0 0 auto",
-            }}
-          >
+          {activeTab === "medicos" && medicosComCitacoes.length > 0 && (
+            <select value={filterMedico} onChange={e => setFilterMedico(e.target.value)}
+              style={{ background: "#070D1A", border: `1px solid ${s.border2}`, color: s.text, padding: "7px 10px", borderRadius: 7, fontSize: 12 }}>
+              <option value="todos">Todos os médicos</option>
+              {medicosComCitacoes.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          )}
+
+          <select value={filterRel} onChange={e => setFilterRel(e.target.value)}
+            style={{ background: "#070D1A", border: `1px solid ${s.border2}`, color: s.text, padding: "7px 10px", borderRadius: 7, fontSize: 12 }}>
             <option value="todos">Toda relevância</option>
             <option value="alta">🔥 Alta</option>
             <option value="media">📌 Média</option>
             <option value="baixa">● Baixa</option>
           </select>
 
-          <span style={{ color: s.muted, fontSize: 11, marginLeft: "auto" }}>
-            {filtered.length} artigo{filtered.length !== 1 ? "s" : ""}
-          </span>
+          <span style={{ color: s.muted, fontSize: 11, marginLeft: "auto" }}>{filtered.length} artigo{filtered.length !== 1 ? "s" : ""}</span>
         </div>
       )}
 
-      {/* Lista de artigos */}
+      {/* Lista */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: s.muted }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>⏳</div>
-          Carregando notícias...
-        </div>
+        <div style={{ textAlign: "center", padding: "60px 0", color: s.muted }}>⏳ Carregando...</div>
       ) : filtered.length === 0 && articles.length > 0 ? (
-        <div style={{ textAlign: "center", padding: "40px 0", color: s.muted }}>
-          Nenhum artigo encontrado para os filtros selecionados.
-        </div>
+        <div style={{ textAlign: "center", padding: "40px 0", color: s.muted }}>Nenhum artigo para os filtros selecionados.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map((article, i) => (
-            <ArticleCard key={article.id || article.url || i} article={article} s={s} />
-          ))}
+          {filtered.map((article, i) => <ArticleCard key={article.id || article.url || i} article={article} s={s} />)}
         </div>
       )}
 
-      {/* Footer info */}
-      <div style={{
-        marginTop: 20,
-        padding: "10px 14px",
-        background: "rgba(255,255,255,0.02)",
-        border: `1px solid ${s.border}`,
-        borderRadius: 8,
-        color: s.muted,
-        fontSize: 11,
-        textAlign: "center",
-      }}>
-        🕐 Varredura automática diária às 7h00 (Vercel Cron) · Fonte: NewsData.io · Idioma: PT-BR
+      <div style={{ marginTop: 20, padding: "10px 14px", background: "rgba(255,255,255,0.02)", border: `1px solid ${s.border}`, borderRadius: 8, color: s.muted, fontSize: 11, textAlign: "center" }}>
+        🕐 Varredura automática diária às 7h00 BRT · NewsData.io · PT-BR + EN
       </div>
     </div>
   );
