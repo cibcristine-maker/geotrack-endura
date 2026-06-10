@@ -7,15 +7,26 @@ const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const NEWSDATA_BASE = "https://newsdata.io/api/1/news";
 
 // Palavras que indicam contexto médico/saúde — se nenhuma aparecer, descarta
+// Palavras de ALTA especificidade médica — pelo menos UMA deve aparecer
+// para o artigo ser aceito. Termos genéricos como "saúde", "tratamento",
+// "médico" foram removidos pois ocorrem em contextos esportivos/políticos.
 const MEDICAL_CONTEXT = [
-  "médico","médica","doutor","doutora","dr.","dra.","cirurgia","cirurgião","endoscopia",
-  "endoscópico","gastroplastia","gastroplastia endoscópica","bariátrica","bariatrica",
-  "obesidade","emagrecimento","tratamento","paciente","clínica","clinica","hospital",
-  "saúde","saude","procedimento","especialista","gastroenterologia","nutrologia",
-  "endocrinologia","medicina","consulta","obesity","surgery","doctor","physician",
-  "clinic","health","treatment","medical","bariatric","endoscopic","sleeve","balloon",
-  "gastric","weight loss","glp","ozempic","semaglutida","semaglutide","mounjaro",
-  "tirzepatida","tirzepatide","wegovy","esg","bib","endobariatria",
+  // Procedimentos e especialidades
+  "endoscopia","endoscópica","endoscopico","gastroplastia","bariátrica","bariatrica",
+  "endobariatria","cirurgia bariátrica","cirurgia bariatrica","sleeve","bypass",
+  "gastrectomia","gastroenterologia","nutrologia","endocrinologia",
+  // Condições
+  "obesidade","obesity","sobrepeso","overweight","imc","índice de massa corporal",
+  "compulsão alimentar","transtorno alimentar","resistência insulina",
+  // Medicamentos GLP-1 (muito específicos)
+  "ozempic","semaglutida","semaglutide","mounjaro","tirzepatida","tirzepatide",
+  "wegovy","rybelsus","saxenda","victoza","glp-1","glp1",
+  // Dispositivos
+  "balão intragástrico","balao intragastrico","intragastric balloon",
+  "endoscopic sleeve","esg","bib intragástrico",
+  // Contexto clínico específico
+  "paciente obeso","paciente obesidade","reganho de peso","perda de peso",
+  "cirurgião bariátrico","médico bariátrico","endoscopista",
 ];
 
 const MARKET_QUERIES = [
@@ -62,7 +73,9 @@ async function fetchGoogleNewsRSS(query) {
     const pubDate = (item.match(/<pubDate>(.*?)<\/pubDate>/))?.[1]?.trim() || "";
     const source  = (item.match(/<source[^>]*>(.*?)<\/source>/))?.[1]?.trim() || "Google News";
     const desc    = (item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) || item.match(/<description>(.*?)<\/description>/))?.[1]?.replace(/<[^>]+>/g, "").trim() || "";
-    if (title && link) items.push({ title, link, pubDate, source, description: desc });
+    // Limpa HTML e entidades da descrição
+    const cleanDesc = desc.replace(/<[^>]+>/g, "").replace(/&lt;.*?&gt;/g, "").replace(/&amp;/g,"&").replace(/&quot;/g,'"').trim();
+    if (title && link) items.push({ title, link, pubDate, source, description: cleanDesc });
   }
   return items;
 }
@@ -82,10 +95,11 @@ function normalizarNome(nome) {
   return nome.replace(/^dr\.?\s+|^dra\.?\s+/i, "").trim();
 }
 
-// Verifica se o artigo tem contexto médico — filtra homônimos
+// Verifica se o artigo tem contexto médico — exige pelo menos 2 termos específicos
 function isMedicalContext(title, description) {
   const text = `${title} ${description}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return MEDICAL_CONTEXT.some(w => text.includes(w));
+  const matches = MEDICAL_CONTEXT.filter(w => text.includes(w));
+  return matches.length >= 2;
 }
 
 function scoreRelevancia(title, description, isMedico = false) {
@@ -193,8 +207,7 @@ export default async function handler(req, res) {
 
         // Busca nome + termo médico para reduzir homônimos direto na query
         const queriesMedico = [
-          `"${nome}" médico`,
-          `"${nome}" obesidade OR endoscopia OR bariátrica OR gastroplastia OR semaglutida OR tirzepatida`,
+          `"${nome}" obesidade OR endoscopia OR gastroplastia OR bariátrica OR semaglutida OR tirzepatida OR ozempic OR mounjaro`,
         ];
 
         for (const query of queriesMedico) {
