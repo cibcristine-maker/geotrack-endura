@@ -1,23 +1,21 @@
 // api/media-monitor.js
 // GeoTrack — Media Monitor
-// Busca notícias sobre obesidade/ESG via NewsData.io e salva no Supabase
-// Chamado pelo frontend (botão manual) e pelo Cron Job diário
 
 const SUPA_URL = "https://ojbbjgqfjzygdenwtwrz.supabase.co";
 const NEWSDATA_BASE = "https://newsdata.io/api/1/news";
 
-// Keywords para busca — cobre obesidade, ESG, BIB, GLP-1 e endobariatria
 const KEYWORD_SETS = [
-  { query: "obesidade tratamento endoscopia", tag: "ESG/Endobariatria" },
-  { query: "gastroplastia endoscópica sleeve endoscópico", tag: "ESG/Endobariatria" },
-  { query: "balão intragástrico obesidade", tag: "BIB" },
-  { query: "GLP-1 Ozempic Mounjaro obesidade reganho peso", tag: "GLP-1/Mercado" },
-  { query: "obesidade cirurgia bariátrica tratamento Brasil", tag: "Mercado" },
-  { query: "obesidade endoscopia digestiva bariatrica", tag: "Mercado" },
+  { query: "obesidade", tag: "Mercado", lang: "pt", country: "br" },
+  { query: "GLP-1 Ozempic Mounjaro", tag: "GLP-1/Mercado", lang: "pt", country: "br" },
+  { query: "gastroplastia endoscópica", tag: "ESG/Endobariatria", lang: "pt", country: "br" },
+  { query: "balão intragástrico", tag: "BIB", lang: "pt", country: "br" },
+  { query: "ESG endoscopic sleeve gastroplasty", tag: "ESG/Endobariatria", lang: "en", country: null },
+  { query: "intragastric balloon obesity", tag: "BIB", lang: "en", country: null },
+  { query: "obesity GLP-1 treatment", tag: "GLP-1/Mercado", lang: "en", country: null },
 ];
 
 async function supaFetch(path, opts = {}) {
-  const SUPA_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPA_KEY;
+  const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYmJqZ3Fmanp5Z2Rlbnd0d3J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzM0MTksImV4cCI6MjA5NDQ0OTQxOX0.aMFG3M9Ll5iGQZamREUK9LvN3YhK40RBg8R0gH5bVFg";
   const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
     headers: {
       apikey: SUPA_KEY,
@@ -32,66 +30,45 @@ async function supaFetch(path, opts = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-async function fetchNews(query, apiKey) {
-  const params = new URLSearchParams({
-    apikey: apiKey,
-    q: query,
-    language: "pt",
-    country: "br",
-    size: 5,
-  });
+async function fetchNews(query, lang, country, apiKey) {
+  const params = new URLSearchParams({ apikey: apiKey, q: query, language: lang, size: 5 });
+  if (country) params.set("country", country);
   const res = await fetch(`${NEWSDATA_BASE}?${params}`);
-  if (!res.ok) throw new Error(`NewsData error: ${res.status}`);
   const data = await res.json();
+  if (data.status === "error") throw new Error(data.results?.message || JSON.stringify(data));
   return data.results || [];
 }
 
-function scoreRelevancia(article, tag) {
-  const text = `${article.title || ""} ${article.description || ""}`.toLowerCase();
+function scoreRelevancia(article) {
+  const text = `${article.title || ""} ${article.description || ""}`.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   let score = 0;
-
-  const highValue = ["esg", "gastroplastia endoscópica", "sleeve endoscópico", "balão intragástrico", "endobariatria", "endoscopia bariátrica"];
-  const medValue  = ["obesidade", "ozempic", "mounjaro", "glp-1", "wegovy", "bariátrica", "sobrepeso"];
-  const lowValue  = ["peso", "emagrecer", "dieta", "nutrição"];
-
-  highValue.forEach(w => { if (text.includes(w)) score += 3; });
-  medValue.forEach(w =>  { if (text.includes(w)) score += 2; });
-  lowValue.forEach(w =>  { if (text.includes(w)) score += 1; });
-
+  ["esg", "gastroplastia endoscopica", "sleeve endoscopico", "balao intragastrico", "endobariatria", "endoscopic sleeve", "intragastric balloon"].forEach(w => { if (text.includes(w)) score += 3; });
+  ["obesidade", "obesity", "ozempic", "mounjaro", "glp", "wegovy", "bariatrica", "bariatric"].forEach(w => { if (text.includes(w)) score += 2; });
+  ["peso", "weight", "emagrecer", "dieta"].forEach(w => { if (text.includes(w)) score += 1; });
   if (score >= 5) return "alta";
   if (score >= 2) return "media";
   return "baixa";
 }
 
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   if (req.method === "OPTIONS") return res.status(200).end();
 
   const NEWSDATA_KEY = process.env.NEWSDATA_API_KEY || "pub_23980cf474644e2ab67a993c113144a1";
-  const isCron = req.headers["x-vercel-cron"] === "1";
-
-  if (!NEWSDATA_KEY) {
-    return res.status(500).json({ error: "NEWSDATA_API_KEY não configurada." });
-  }
 
   try {
     const allArticles = [];
     const seen = new Set();
+    const errors = [];
 
-    for (const { query, tag } of KEYWORD_SETS) {
+    for (const { query, tag, lang, country } of KEYWORD_SETS) {
       try {
-        const results = await fetchNews(query, NEWSDATA_KEY);
+        const results = await fetchNews(query, lang, country, NEWSDATA_KEY);
         for (const article of results) {
-          // Deduplica por link
           if (!article.link || seen.has(article.link)) continue;
           seen.add(article.link);
-
-          const relevancia = scoreRelevancia(article, tag);
-          // Se rodada automática (cron), salva só alta/media. Manual salva tudo.
-          if (isCron && relevancia === "baixa") continue;
-
           allArticles.push({
             titulo: article.title || "Sem título",
             descricao: article.description || "",
@@ -99,16 +76,15 @@ export default async function handler(req, res) {
             url: article.link,
             data_publicacao: article.pubDate ? article.pubDate.split(" ")[0] : new Date().toISOString().split("T")[0],
             tag,
-            relevancia,
+            relevancia: scoreRelevancia(article),
             criado_em: new Date().toISOString(),
           });
         }
       } catch (err) {
-        console.warn(`Erro na query "${query}":`, err.message);
+        errors.push(`"${query}": ${err.message}`);
       }
     }
 
-    // Salva no Supabase — upsert por URL para evitar duplicatas
     if (allArticles.length > 0) {
       await supaFetch("media_alerts?on_conflict=url", {
         method: "POST",
@@ -117,15 +93,9 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({
-      ok: true,
-      total: allArticles.length,
-      articles: allArticles,
-      timestamp: new Date().toISOString(),
-    });
+    return res.status(200).json({ ok: true, total: allArticles.length, articles: allArticles, errors, timestamp: new Date().toISOString() });
 
   } catch (err) {
-    console.error("media-monitor error:", err);
     return res.status(500).json({ error: err.message });
   }
 }
