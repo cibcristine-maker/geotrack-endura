@@ -69,11 +69,11 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const NEWSDATA_KEY = process.env.NEWSDATA_API_KEY;
+  const NEWSDATA_KEY = process.env.NEWSDATA_API_KEY || "pub_23980cf474644e2ab67a993c113144a1";
   const isCron = req.headers["x-vercel-cron"] === "1";
 
   if (!NEWSDATA_KEY) {
-    return res.status(500).json({ error: "NEWSDATA_API_KEY não configurada nas variáveis de ambiente do Vercel." });
+    return res.status(500).json({ error: "NEWSDATA_API_KEY não configurada." });
   }
 
   try {
