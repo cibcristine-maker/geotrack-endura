@@ -9,22 +9,24 @@ const NEWSDATA_BASE = "https://newsdata.io/api/1/news";
 // Palavras que indicam contexto médico/saúde — se nenhuma aparecer, descarta
 const MEDICAL_CONTEXT = [
   "médico","médica","doutor","doutora","dr.","dra.","cirurgia","cirurgião","endoscopia",
-  "endoscópico","gastroplastia","bariátrica","bariatrica","obesidade","emagrecimento",
-  "tratamento","paciente","clínica","clinica","hospital","saúde","saude","procedimento",
-  "especialista","gastroenterologia","nutrologia","endocrinologia","medicina","consulta",
-  "obesity","surgery","doctor","physician","clinic","health","treatment","medical",
-  "bariatric","endoscopic","sleeve","balloon","gastric","weight loss","glp","ozempic",
-  "mounjaro","wegovy","esg","bib","endobariatria",
+  "endoscópico","gastroplastia","gastroplastia endoscópica","bariátrica","bariatrica",
+  "obesidade","emagrecimento","tratamento","paciente","clínica","clinica","hospital",
+  "saúde","saude","procedimento","especialista","gastroenterologia","nutrologia",
+  "endocrinologia","medicina","consulta","obesity","surgery","doctor","physician",
+  "clinic","health","treatment","medical","bariatric","endoscopic","sleeve","balloon",
+  "gastric","weight loss","glp","ozempic","semaglutida","semaglutide","mounjaro",
+  "tirzepatida","tirzepatide","wegovy","esg","bib","endobariatria",
 ];
 
 const MARKET_QUERIES = [
   { query: "obesidade", tag: "Mercado", lang: "pt", country: "br" },
-  { query: "GLP-1 Ozempic Mounjaro", tag: "GLP-1/Mercado", lang: "pt", country: "br" },
+  { query: "Ozempic semaglutida", tag: "GLP-1/Mercado", lang: "pt", country: "br" },
+  { query: "Mounjaro tirzepatida", tag: "GLP-1/Mercado", lang: "pt", country: "br" },
   { query: "gastroplastia endoscópica", tag: "ESG/Endobariatria", lang: "pt", country: "br" },
   { query: "balão intragástrico", tag: "BIB", lang: "pt", country: "br" },
   { query: "ESG endoscopic sleeve gastroplasty", tag: "ESG/Endobariatria", lang: "en", country: null },
   { query: "intragastric balloon obesity", tag: "BIB", lang: "en", country: null },
-  { query: "obesity GLP-1 treatment", tag: "GLP-1/Mercado", lang: "en", country: null },
+  { query: "semaglutide tirzepatide obesity", tag: "GLP-1/Mercado", lang: "en", country: null },
 ];
 
 async function supaFetch(path, opts = {}) {
@@ -192,7 +194,7 @@ export default async function handler(req, res) {
         // Busca nome + termo médico para reduzir homônimos direto na query
         const queriesMedico = [
           `"${nome}" médico`,
-          `"${nome}" obesidade OR endoscopia OR bariátrica OR gastroplastia OR GLP`,
+          `"${nome}" obesidade OR endoscopia OR bariátrica OR gastroplastia OR semaglutida OR tirzepatida`,
         ];
 
         for (const query of queriesMedico) {
