@@ -195,7 +195,40 @@ export default async function handler(req, res) {
       }
     }
 
-    // Busca automática por médico removida — use 🔗 Adicionar URL no Media Monitor
+
+    // ── MÉDICOS: Google News RSS + filtro de contexto médico ──
+    if (mode === "all" || mode === "doctors") {
+      let medicos = [];
+      try { medicos = await supaFetch("medicos?select=id,nome&order=nome") || []; }
+      catch (err) { errors.push(`Supabase médicos: ${err.message}`); }
+
+      for (const medico of medicos) {
+        const nome = normalizarNome(medico.nome);
+        if (!nome || nome.length < 5) continue;
+
+        const queriesMedico = [
+          `"${nome}" obesidade OR endoscopia OR gastroplastia OR bariátrica OR semaglutida OR tirzepatida OR ozempic OR mounjaro`,
+        ];
+
+        for (const query of queriesMedico) {
+          try {
+            const results = await fetchGoogleNewsRSS(query);
+            for (const a of results) {
+              if (!a.link || seen.has(a.link)) continue;
+              if (!isMedicalContext(a.title, a.description)) continue;
+              seen.add(a.link);
+              allArticles.push({
+                titulo: a.title, descricao: a.description || "",
+                fonte: a.source || "Google News", url: a.link,
+                data_publicacao: parseDate(a.pubDate),
+                tag: "Médico Parceiro", relevancia: "alta",
+                medico_nome: medico.nome, criado_em: new Date().toISOString(),
+              });
+            }
+          } catch (err) { errors.push(`Google News "${nome}": ${err.message}`); }
+        }
+      }
+    }
 
     // ── SALVA ──
     if (allArticles.length > 0) {
