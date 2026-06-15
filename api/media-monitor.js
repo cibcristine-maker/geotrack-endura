@@ -262,7 +262,17 @@ export default async function handler(req, res) {
       try { medicos = await supaFetch("medicos?select=id,nome,cidade,especialidade&order=nome") || []; }
       catch (err) { errors.push(`Supabase médicos: ${err.message}`); }
 
-      for (const medico of medicos) {
+      // Rotação: máx 8 médicos por varredura para não dar timeout
+      const BATCH_SIZE = 8;
+      const offset = medicos.length > BATCH_SIZE
+        ? (new Date().getDate() * BATCH_SIZE) % medicos.length
+        : 0;
+      const medicosParaVarrer = medicos.length <= BATCH_SIZE
+        ? medicos
+        : [...medicos.slice(offset, offset + BATCH_SIZE),
+           ...medicos.slice(0, Math.max(0, BATCH_SIZE - (medicos.length - offset)))];
+
+      for (const medico of medicosParaVarrer) {
         const nome = normalizarNome(medico.nome);
         if (!nome || nome.length < 5) continue;
 
@@ -281,7 +291,10 @@ export default async function handler(req, res) {
 
         for (const query of queriesMedico) {
           try {
-            const results = await fetchGoogleNewsRSS(query);
+            const results = await Promise.race([
+              fetchGoogleNewsRSS(query),
+              new Promise((_, rej) => setTimeout(() => rej(new Error("RSS timeout")), 7000))
+            ]);
             for (const a of results) {
               if (!a.link || seen.has(a.link)) continue;
               if (!isMedicalContext(a.title, a.description)) continue;
