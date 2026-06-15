@@ -313,14 +313,16 @@ export default async function handler(req, res) {
         const nome = normalizarNome(medico.nome);
         if (!nome || nome.length < 5) continue;
 
-        // Monta qualificadores para evitar homonimos
-        const qualificadores = [];
-        if (medico.cidade)       qualificadores.push(medico.cidade);
-        if (medico.especialidade) qualificadores.push(medico.especialidade);
-        // Fallback: termos clinicos restritos quando nao ha cidade/especialidade
-        const contextoClin = qualificadores.length > 0
-          ? qualificadores.join(" ")
-          : "obesidade OR semaglutida OR ozempic OR gastroplastia OR bariatrica";
+        // Query anti-homonimo: nome + cidade + tema clinico obrigatorio
+        // Tres filtros simultâneos = praticamente impossivel trazer homonimo
+        const cidade = (medico.cidade || "").trim();
+        const temaClinico = 'obesidade OR gastroplastia OR semaglutida OR bariatrica OR GLP-1';
+        
+        // Se tem cidade: "Dr. Nome" cidade obesidade OR gastroplastia...
+        // Se nao tem cidade: "Dr. Nome" medico obesidade OR gastroplastia...
+        const contextoClin = cidade
+          ? `${cidade} (${temaClinico})`
+          : `medico (${temaClinico})`;
 
         const queriesMedico = [
           `"${nome}" ${contextoClin}`,
