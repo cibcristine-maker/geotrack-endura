@@ -180,6 +180,43 @@ export default async function handler(req, res) {
   const mode      = req.query?.mode || "all";
   const manualUrl = req.query?.url || null;
 
+  // ── MODO PURGE: limpa banco de artigos sem relação com obesidade ──
+  if (mode === "purge") {
+    try {
+      const OBESITY = [
+        "obesidade","obeso","obesa","sobrepeso","overweight","obesity",
+        "emagrecimento","emagrecer","perda de peso","weight loss",
+        "ozempic","wegovy","semaglutida","semaglutide","mounjaro","tirzepatida","tirzepatide",
+        "glp-1","glp1","saxenda","victoza","rybelsus",
+        "gastroplastia","sleeve","bypass","bariátrica","bariatrica","gastrectomia",
+        "balão intragástrico","balao intragastrico","intragastric balloon",
+        "endobariatria","esg","imc","reganho de peso","compulsão alimentar","apetite","caneta emagrecedora",
+      ];
+      const isOk = t => OBESITY.some(w => (t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").includes(w));
+
+      // Buscar todos os artigos de médicos
+      const all = await supaFetch("media_alerts?select=id,titulo&tag=eq.M%C3%A9dico%20Parceiro&limit=500") || [];
+      const toDelete = all.filter(a => !isOk(a.titulo));
+
+      let deleted = 0;
+      for (let i = 0; i < toDelete.length; i += 50) {
+        const batch = toDelete.slice(i, i + 50);
+        // UUIDs no PostgREST sem aspas: ?id=in.(uuid1,uuid2,...)
+        const idList = batch.map(a => a.id).join(",");
+        await supaFetch(`media_alerts?id=in.(${idList})`, { method: "DELETE" });
+        deleted += batch.length;
+      }
+      return res.status(200).json({
+        ok: true,
+        total_antes: all.length,
+        deletados: deleted,
+        mantidos: all.length - deleted,
+      });
+    } catch(err) {
+      return res.status(500).json({ error: "purge: " + err.message });
+    }
+  }
+
   try {
     const allArticles = [];
     const seen = new Set();
