@@ -6,12 +6,20 @@ const SUPA_URL = "https://ojbbjgqfjzygdenwtwrz.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYmJqZ3Fmanp5Z2Rlbnd0d3J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzM0MTksImV4cCI6MjA5NDQ0OTQxOX0.aMFG3M9Ll5iGQZamREUK9LvN3YhK40RBg8R0gH5bVFg";
 
 async function supaFetch(path, opts = {}) {
+  const { prefer, headers: extraHeaders, ...restOpts } = opts;
   const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", Prefer: opts.prefer || "return=representation", ...opts.headers },
-    ...opts,
+    headers: {
+      apikey: SUPA_KEY,
+      Authorization: `Bearer ${SUPA_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": prefer || "return=representation",
+      ...extraHeaders,
+    },
+    ...restOpts,
   });
-  if (!res.ok) throw new Error(await res.text());
+  // Lê o body UMA só vez
   const text = await res.text();
+  if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
   return text ? JSON.parse(text) : null;
 }
 
@@ -82,14 +90,20 @@ export default function MediaMonitor({ s }) {
   const fetchArticles = useCallback(async () => {
     try {
       setLoading(true); setError(null);
-      const [data, meds] = await Promise.all([
-        supaFetch("media_alerts?select=*&order=data_publicacao.desc,criado_em.desc&limit=200"),
-        supaFetch("medicos?select=id,nome&order=nome"),
-      ]);
+      // Busca separada para isolar erros — se médicos falhar, artigos ainda carregam
+      const data = await supaFetch(
+        "media_alerts?select=id,titulo,descricao,fonte,url,data_publicacao,tag,relevancia,medico_nome,criado_em" +
+        "&order=data_publicacao.desc,criado_em.desc&limit=150"
+      ).catch(err => { console.warn("media_alerts erro:", err.message); return []; });
+      const meds = await supaFetch("medicos?select=id,nome&order=nome")
+        .catch(() => []);
       setArticles(data || []);
       setMedicos(meds || []);
-    } catch (err) { setError("Erro ao carregar: " + err.message); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError("Erro ao carregar: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchArticles(); }, [fetchArticles]);
@@ -98,13 +112,18 @@ export default function MediaMonitor({ s }) {
     setScanning(true); setScanMsg(null); setError(null);
     try {
       const res = await fetch(`/api/media-monitor?mode=${scanMode}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      const erroMsg = data.errors?.length ? ` · ${data.errors.length} query(ies) sem resultado` : "";
-      setScanMsg(`✅ ${data.total} artigo(s) encontrado(s)${erroMsg}`);
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { throw new Error("Resposta inválida da API: " + text.slice(0, 100)); }
+      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      const aviso = data.errors?.length ? ` · ${data.errors.length} aviso(s) ignorados` : "";
+      setScanMsg(`✅ ${data.total} artigo(s) encontrado(s)${aviso}`);
       await fetchArticles();
-    } catch (err) { setError("Erro: " + err.message); }
-    finally { setScanning(false); }
+    } catch (err) {
+      setError("Erro: " + err.message);
+    } finally {
+      setScanning(false);
+    }
   };
 
   const handleSaveUrl = async () => {
