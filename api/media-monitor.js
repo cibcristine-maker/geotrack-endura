@@ -294,13 +294,13 @@ export default async function handler(req, res) {
 
 
     // ── MÉDICOS: Google News RSS + filtro de contexto médico ──
-    if (mode === "all" || mode === "doctors") {
+    if (mode === "doctors") {  // "all" não inclui médicos — use mode=doctors explicitamente
       let medicos = [];
       try { medicos = await supaFetch("medicos?select=id,nome,cidade,especialidade&order=nome") || []; }
       catch (err) { errors.push(`Supabase médicos: ${err.message}`); }
 
       // Rotação: máx 8 médicos por varredura para não dar timeout
-      const BATCH_SIZE = 8;
+      const BATCH_SIZE = 5;  // conservador para evitar timeout
       const offset = medicos.length > BATCH_SIZE
         ? (new Date().getDate() * BATCH_SIZE) % medicos.length
         : 0;
