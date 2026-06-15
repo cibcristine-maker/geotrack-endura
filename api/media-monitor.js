@@ -41,10 +41,22 @@ const MARKET_QUERIES = [
 ];
 
 async function supaFetch(path, opts = {}) {
+  const { prefer, headers: extraHeaders, ...restOpts } = opts;
+  const preferHeader = (extraHeaders && extraHeaders["Prefer"]) || prefer || "return=representation";
   const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", Prefer: opts.prefer || "return=representation", ...opts.headers },
-    ...opts,
+    headers: {
+      apikey: SUPA_KEY,
+      Authorization: `Bearer ${SUPA_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": preferHeader,
+      ...extraHeaders,
+    },
+    ...restOpts,
   });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(errText);
+  }
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
@@ -185,7 +197,7 @@ export default async function handler(req, res) {
           relevancia: medico_nome ? "alta" : scoreRelevancia(meta.title, meta.description),
           medico_nome: medico_nome || null, criado_em: new Date().toISOString(),
         };
-        await supaFetch("media_alerts?on_conflict=url", { method: "POST", prefer: "resolution=ignore-duplicates,return=representation", body: JSON.stringify([article]) });
+        await supaFetch("media_alerts", { method: "POST", headers: { "Prefer": "resolution=ignore-duplicates,return=representation" }, body: JSON.stringify([article]) });
         return res.status(200).json({ ok: true, total: 1, articles: [article], errors: [] });
       } catch (err) {
         return res.status(400).json({ error: `Erro ao processar URL: ${err.message}` });
@@ -298,8 +310,8 @@ export default async function handler(req, res) {
     for (let i = 0; i < allArticles.length; i += BATCH) {
       const batch = allArticles.slice(i, i + BATCH);
       try {
-        await supaFetch("media_alerts?on_conflict=url", {
-          method: "POST", prefer: "resolution=ignore-duplicates,return=representation",
+        await supaFetch("media_alerts", {
+          method: "POST", headers: { "Prefer": "resolution=ignore-duplicates,return=representation" },
           body: JSON.stringify(batch),
         });
         savedCount += batch.length;
@@ -307,8 +319,8 @@ export default async function handler(req, res) {
         // Tenta um por um para identificar o artigo problemático
         for (const art of batch) {
           try {
-            await supaFetch("media_alerts?on_conflict=url", {
-              method: "POST", prefer: "resolution=ignore-duplicates,return=representation",
+            await supaFetch("media_alerts", {
+              method: "POST", headers: { "Prefer": "resolution=ignore-duplicates,return=representation" },
               body: JSON.stringify([art]),
             });
             savedCount++;
