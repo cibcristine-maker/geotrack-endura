@@ -1,30 +1,30 @@
 // api/media-monitor.js
-// GeoTrack — Media Monitor
+// GeoTrack - Media Monitor
 // Fontes: NewsData.io + Google News RSS + URL manual
 
 const SUPA_URL = "https://ojbbjgqfjzygdenwtwrz.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYmJqZ3Fmanp5Z2Rlbnd0d3J6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzM0MTksImV4cCI6MjA5NDQ0OTQxOX0.aMFG3M9Ll5iGQZamREUK9LvN3YhK40RBg8R0gH5bVFg";
 const NEWSDATA_BASE = "https://newsdata.io/api/1/news";
 
-// Palavras que indicam contexto médico/saúde — se nenhuma aparecer, descarta
-// Palavras de ALTA especificidade médica — pelo menos UMA deve aparecer
-// para o artigo ser aceito. Termos genéricos como "saúde", "tratamento",
-// "médico" foram removidos pois ocorrem em contextos esportivos/políticos.
+// Palavras que indicam contexto medico/saude - se nenhuma aparecer, descarta
+// Palavras de ALTA especificidade medica - pelo menos UMA deve aparecer
+// para o artigo ser aceito. Termos genericos como "saude", "tratamento",
+// "medico" foram removidos pois ocorrem em contextos esportivos/politicos.
 const MEDICAL_CONTEXT = [
   // Procedimentos e especialidades
   "endoscopia","endoscópica","endoscopico","gastroplastia","bariátrica","bariatrica",
   "endobariatria","cirurgia bariátrica","cirurgia bariatrica","sleeve","bypass",
   "gastrectomia","gastroenterologia","nutrologia","endocrinologia",
-  // Condições
+  // Condicoes
   "obesidade","obesity","sobrepeso","overweight","imc","índice de massa corporal",
   "compulsão alimentar","transtorno alimentar","resistência insulina",
-  // Medicamentos GLP-1 (muito específicos)
+  // Medicamentos GLP-1 (muito especificos)
   "ozempic","semaglutida","semaglutide","mounjaro","tirzepatida","tirzepatide",
   "wegovy","rybelsus","saxenda","victoza","glp-1","glp1",
   // Dispositivos
   "balão intragástrico","balao intragastrico","intragastric balloon",
   "endoscopic sleeve","esg","bib intragástrico",
-  // Contexto clínico específico
+  // Contexto clinico especifico
   "paciente obeso","paciente obesidade","reganho de peso","perda de peso",
   "cirurgião bariátrico","médico bariátrico","endoscopista",
 ];
@@ -85,7 +85,7 @@ async function fetchGoogleNewsRSS(query) {
     const pubDate = (item.match(/<pubDate>(.*?)<\/pubDate>/))?.[1]?.trim() || "";
     const source  = (item.match(/<source[^>]*>(.*?)<\/source>/))?.[1]?.trim() || "Google News";
     const desc    = (item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) || item.match(/<description>(.*?)<\/description>/))?.[1]?.replace(/<[^>]+>/g, "").trim() || "";
-    // Limpa HTML e entidades da descrição
+    // Limpa HTML e entidades da descricao
     const cleanDesc = desc.replace(/<[^>]+>/g, "").replace(/&lt;.*?&gt;/g, "").replace(/&amp;/g,"&").replace(/&quot;/g,'"').trim();
     if (title && link) items.push({ title, link, pubDate, source, description: cleanDesc });
   }
@@ -107,28 +107,28 @@ function normalizarNome(nome) {
   return nome.replace(/^dr\.?\s+|^dra\.?\s+/i, "").trim();
 }
 
-// FILTRO RESTRITO: só aceita artigo se o TÍTULO contiver pelo menos 1 termo de obesidade/emagrecimento
-// Propositalmente ignoramos a descrição pois o RSS retorna HTML encoded (&lt;a href=...)
+// FILTRO RESTRITO: so aceita artigo se o TÍTULO contiver pelo menos 1 termo de obesidade/emagrecimento
+// Propositalmente ignoramos a descricao pois o RSS retorna HTML encoded (&lt;a href=...)
 const OBESITY_TITLE_TERMS = [
-  // Condição
+  // Condicao
   "obesidade","obeso","obesa","sobrepeso","overweight","obesity",
   // Perda de peso / emagrecimento
   "emagrecimento","emagrecer","perda de peso","weight loss","perda peso",
-  // Medicamentos GLP-1 — muito específicos, raramente homônimos
+  // Medicamentos GLP-1 - muito especificos, raramente homonimos
   "ozempic","wegovy","semaglutida","semaglutide","mounjaro","tirzepatida","tirzepatide",
   "glp-1","glp1","saxenda","victoza","rybelsus",
-  // Procedimentos bariátricos / endoscópicos
+  // Procedimentos bariatricos / endoscopicos
   "gastroplastia","gastric sleeve","sleeve","bypass gástrico","cirurgia bariátrica",
   "cirurgia bariatrica","bariátrica","bariatrica","gastrectomia",
   "balão intragástrico","balao intragastrico","intragastric balloon",
   "endoscopic sleeve","esg endobariatria","endobariatria",
-  // Contexto clínico
+  // Contexto clinico
   "imc","índice de massa corporal","indice de massa corporal",
   "reganho de peso","compulsão alimentar",
 ];
 
 function isMedicalContext(title, _description) {
-  // Filtra SOMENTE pelo título — descrição do RSS é HTML lixo
+  // Filtra SOMENTE pelo titulo - descricao do RSS e HTML lixo
   const t = title.toLowerCase();
   return OBESITY_TITLE_TERMS.some(w => t.includes(w));
 }
@@ -150,18 +150,18 @@ function parseDate(str) {
   try { return new Date(str).toISOString().split("T")[0]; } catch { return new Date().toISOString().split("T")[0]; }
 }
 
-// Sanitiza URL — remove espaços, escapa chars inválidos, valida formato
+// Sanitiza URL - remove espacos, escapa chars invalidos, valida formato
 function sanitizeUrl(url) {
   if (!url) return null;
   try {
-    // Remove espaços e quebras de linha
+    // Remove espacos e quebras de linha
     const clean = url.trim().replace(/[\r\n\t ]/g, "");
-    // Valida que é URL válida
+    // Valida que e URL valida
     new URL(clean);
     // Trunca se muito longa (Supabase tem limite de 2048 chars em alguns configs)
     return clean.length > 2000 ? clean.slice(0, 2000) : clean;
   } catch {
-    return null; // URL inválida — descarta
+    return null; // URL inválida - descarta
   }
 }
 
@@ -180,7 +180,7 @@ export default async function handler(req, res) {
   const mode      = req.query?.mode || "all";
   const manualUrl = req.query?.url || null;
 
-  // ── MODO PURGE: limpa banco de artigos sem relação com obesidade ──
+  // -- MODO PURGE: limpa banco de artigos sem relacao com obesidade --
   if (mode === "purge") {
     try {
       const OBESITY = [
@@ -194,7 +194,7 @@ export default async function handler(req, res) {
       ];
       const isOk = t => OBESITY.some(w => (t||"").toLowerCase().includes(w));
 
-      // Buscar todos os artigos de médicos
+      // Buscar todos os artigos de medicos
       const all = await supaFetch("media_alerts?select=id,titulo&tag=eq.M%C3%A9dico%20Parceiro&limit=500") || [];
       const toDelete = all.filter(a => !isOk(a.titulo));
 
@@ -222,7 +222,7 @@ export default async function handler(req, res) {
     const seen = new Set();
     const errors = [];
 
-    // ── URL MANUAL ──
+    // -- URL MANUAL --
     if (manualUrl) {
       try {
         const meta = await fetchURLMeta(manualUrl);
@@ -241,7 +241,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── MERCADO: NewsData.io ──
+    // -- MERCADO: NewsData.io --
     if (mode === "all" || mode === "market") {
       for (const { query, tag, lang, country } of MARKET_QUERIES) {
         try {
@@ -293,13 +293,13 @@ export default async function handler(req, res) {
     }
 
 
-    // ── MÉDICOS: Google News RSS + filtro de contexto médico ──
-    if (mode === "doctors") {  // "all" não inclui médicos — use mode=doctors explicitamente
+    // -- MÉDICOS: Google News RSS + filtro de contexto medico --
+    if (mode === "doctors") {  // "all" não inclui médicos - use mode=doctors explicitamente
       let medicos = [];
       try { medicos = await supaFetch("medicos?select=id,nome,cidade,especialidade&order=nome") || []; }
       catch (err) { errors.push(`Supabase médicos: ${err.message}`); }
 
-      // Rotação: máx 8 médicos por varredura para não dar timeout
+      // Rotacao: max 8 medicos por varredura para nao dar timeout
       const BATCH_SIZE = 5;  // conservador para evitar timeout
       const offset = medicos.length > BATCH_SIZE
         ? (new Date().getDate() * BATCH_SIZE) % medicos.length
@@ -313,14 +313,14 @@ export default async function handler(req, res) {
         const nome = normalizarNome(medico.nome);
         if (!nome || nome.length < 5) continue;
 
-        // Monta qualificadores para evitar homônimos
+        // Monta qualificadores para evitar homonimos
         const qualificadores = [];
         if (medico.cidade)       qualificadores.push(medico.cidade);
         if (medico.especialidade) qualificadores.push(medico.especialidade);
-        // Fallback: termos clínicos restritos quando não há cidade/especialidade
+        // Fallback: termos clinicos restritos quando nao ha cidade/especialidade
         const contextoClin = qualificadores.length > 0
           ? qualificadores.join(" ")
-          : "obesidade OR semaglutida OR ozempic OR gastroplastia OR bariatrica OR "perda de peso"";
+          : "obesidade OR semaglutida OR ozempic OR gastroplastia OR bariatrica";
 
         const queriesMedico = [
           `"${nome}" ${contextoClin}`,
@@ -354,7 +354,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── SALVA em lotes de 20 — evita erro de pattern em bloco único ──
+    // -- SALVA em lotes de 20 - evita erro de pattern em bloco unico --
     const BATCH = 20;
     let savedCount = 0;
     for (let i = 0; i < allArticles.length; i += BATCH) {
@@ -366,7 +366,7 @@ export default async function handler(req, res) {
         });
         savedCount += batch.length;
       } catch (batchErr) {
-        // Tenta um por um para identificar o artigo problemático
+        // Tenta um por um para identificar o artigo problematico
         for (const art of batch) {
           try {
             await supaFetch("media_alerts", {
