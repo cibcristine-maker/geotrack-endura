@@ -72,7 +72,7 @@ export default function MediaMonitor({ s }) {
   const [medicos, setMedicos]           = useState([]);
   const [loading, setLoading]           = useState(true);
   const [scanning, setScanning]         = useState(false);
-  const [scanMode, setScanMode]         = useState("all");
+  const [scanMode, setScanMode]         = useState("market");
   const [error, setError]               = useState(null);
   const [scanMsg, setScanMsg]           = useState(null);
   const [filterTag, setFilterTag]       = useState("todos");
@@ -115,8 +115,18 @@ export default function MediaMonitor({ s }) {
       const text = await res.text();
       let data;
       try { data = JSON.parse(text); } catch { throw new Error("Resposta inválida da API: " + text.slice(0, 100)); }
-      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
-      const aviso = data.errors?.length ? ` · ${data.errors.length} aviso(s) ignorados` : "";
+      if (!res.ok || data.error) {
+        // Timeout/crash da função — artigos de mercado podem ter sido salvos parcialmente
+        const msg = data.error || `HTTP ${res.status}`;
+        if (msg.includes("FUNCTION_INVOCATION_FAILED") || msg.includes("timeout")) {
+          setScanMsg("⚠️ Varredura interrompida (timeout). Artigos de mercado podem ter sido salvos — recarregue a lista.");
+          await fetchArticles();
+        } else {
+          throw new Error(msg);
+        }
+        return;
+      }
+      const aviso = data.errors?.length ? ` · ${data.errors.length} aviso(s)` : "";
       setScanMsg(`✅ ${data.total} artigo(s) encontrado(s)${aviso}`);
       await fetchArticles();
     } catch (err) {
@@ -186,9 +196,9 @@ export default function MediaMonitor({ s }) {
           }}>🔗 Adicionar URL</button>
           <select value={scanMode} onChange={e => setScanMode(e.target.value)}
             style={{ background: "#070D1A", border: `1px solid ${s.border2}`, color: s.muted, padding: "8px 10px", borderRadius: 7, fontSize: 11 }}>
+            <option value="market">📰 Mercado</option>
+            <option value="doctors">👨‍⚕️ Médicos (lento)</option>
             <option value="all">Tudo</option>
-            <option value="market">Só mercado</option>
-            <option value="doctors">Só médicos</option>
           </select>
           <button onClick={handleScan} disabled={scanning} style={{
             background: scanning ? "rgba(34,211,238,0.1)" : "linear-gradient(135deg,#22D3EE,#6EE7B7)",
@@ -259,7 +269,7 @@ export default function MediaMonitor({ s }) {
 
       {activeTab === "medicos" && doctorArticles.length === 0 && !loading && (
         <div style={{ background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.2)", borderRadius: 10, padding: "14px 16px", color: "#F97316", fontSize: 12, marginBottom: 14 }}>
-          Nenhuma citação encontrada ainda. Clique em <strong>Varrer agora → Tudo</strong> ou adicione uma matéria manualmente via <strong>🔗 Adicionar URL</strong>.
+          Nenhuma citação encontrada ainda. Clique em <strong>Varrer agora → Médicos</strong> ou adicione uma matéria manualmente via <strong>🔗 Adicionar URL</strong>.
         </div>
       )}
 
