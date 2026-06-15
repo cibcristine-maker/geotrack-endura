@@ -138,6 +138,27 @@ function parseDate(str) {
   try { return new Date(str).toISOString().split("T")[0]; } catch { return new Date().toISOString().split("T")[0]; }
 }
 
+// Sanitiza URL — remove espaços, escapa chars inválidos, valida formato
+function sanitizeUrl(url) {
+  if (!url) return null;
+  try {
+    // Remove espaços e quebras de linha
+    const clean = url.trim().replace(/[\r\n\t ]/g, "");
+    // Valida que é URL válida
+    new URL(clean);
+    // Trunca se muito longa (Supabase tem limite de 2048 chars em alguns configs)
+    return clean.length > 2000 ? clean.slice(0, 2000) : clean;
+  } catch {
+    return null; // URL inválida — descarta
+  }
+}
+
+// Trunca string para evitar overflow em campos text
+function trunc(str, max = 500) {
+  if (!str) return "";
+  return String(str).slice(0, max);
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -179,9 +200,13 @@ export default async function handler(req, res) {
           for (const a of results) {
             if (!a.link || seen.has(a.link)) continue;
             seen.add(a.link);
+            const safeUrl = sanitizeUrl(a.link);
+            if (!safeUrl) continue;
             allArticles.push({
-              titulo: a.title || "Sem título", descricao: a.description || "",
-              fonte: a.source_id || "NewsData", url: a.link,
+              titulo: trunc(a.title || "Sem título", 400),
+              descricao: trunc(a.description || "", 800),
+              fonte: trunc(a.source_id || "NewsData", 100),
+              url: safeUrl,
               data_publicacao: parseDate(a.pubDate), tag,
               relevancia: scoreRelevancia(a.title, a.description),
               medico_nome: null, criado_em: new Date().toISOString(),
@@ -202,9 +227,13 @@ export default async function handler(req, res) {
           for (const a of results) {
             if (!a.link || seen.has(a.link)) continue;
             seen.add(a.link);
+            const safeUrl2 = sanitizeUrl(a.link);
+            if (!safeUrl2) continue;
             allArticles.push({
-              titulo: a.title, descricao: a.description || "",
-              fonte: a.source || "Google News", url: a.link,
+              titulo: trunc(a.title, 400),
+              descricao: trunc(a.description || "", 800),
+              fonte: trunc(a.source || "Google News", 100),
+              url: safeUrl2,
               data_publicacao: parseDate(a.pubDate), tag,
               relevancia: scoreRelevancia(a.title, a.description),
               medico_nome: null, criado_em: new Date().toISOString(),
@@ -245,12 +274,17 @@ export default async function handler(req, res) {
               if (!a.link || seen.has(a.link)) continue;
               if (!isMedicalContext(a.title, a.description)) continue;
               seen.add(a.link);
+              const safeUrl3 = sanitizeUrl(a.link);
+              if (!safeUrl3) continue;
               allArticles.push({
-                titulo: a.title, descricao: a.description || "",
-                fonte: a.source || "Google News", url: a.link,
+                titulo: trunc(a.title, 400),
+                descricao: trunc(a.description || "", 800),
+                fonte: trunc(a.source || "Google News", 100),
+                url: safeUrl3,
                 data_publicacao: parseDate(a.pubDate),
                 tag: "Médico Parceiro", relevancia: "alta",
-                medico_nome: medico.nome, criado_em: new Date().toISOString(),
+                medico_nome: trunc(medico.nome, 200),
+                criado_em: new Date().toISOString(),
               });
             }
           } catch (err) { errors.push(`Google News "${nome}": ${err.message}`); }
@@ -258,12 +292,31 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── SALVA ──
-    if (allArticles.length > 0) {
-      await supaFetch("media_alerts?on_conflict=url", {
-        method: "POST", prefer: "resolution=ignore-duplicates,return=representation",
-        body: JSON.stringify(allArticles),
-      });
+    // ── SALVA em lotes de 20 — evita erro de pattern em bloco único ──
+    const BATCH = 20;
+    let savedCount = 0;
+    for (let i = 0; i < allArticles.length; i += BATCH) {
+      const batch = allArticles.slice(i, i + BATCH);
+      try {
+        await supaFetch("media_alerts?on_conflict=url", {
+          method: "POST", prefer: "resolution=ignore-duplicates,return=representation",
+          body: JSON.stringify(batch),
+        });
+        savedCount += batch.length;
+      } catch (batchErr) {
+        // Tenta um por um para identificar o artigo problemático
+        for (const art of batch) {
+          try {
+            await supaFetch("media_alerts?on_conflict=url", {
+              method: "POST", prefer: "resolution=ignore-duplicates,return=representation",
+              body: JSON.stringify([art]),
+            });
+            savedCount++;
+          } catch (singleErr) {
+            errors.push(`Erro ao salvar "${art.titulo?.slice(0,40)}": ${singleErr.message}`);
+          }
+        }
+      }
     }
 
     return res.status(200).json({ ok: true, total: allArticles.length, articles: allArticles, errors, timestamp: new Date().toISOString() });
