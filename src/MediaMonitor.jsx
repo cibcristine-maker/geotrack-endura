@@ -114,7 +114,17 @@ export default function MediaMonitor({ s }) {
       const res = await fetch(`/api/media-monitor?mode=${scanMode}`);
       const text = await res.text();
       let data;
-      try { data = JSON.parse(text); } catch { throw new Error("Resposta inválida da API: " + text.slice(0, 100)); }
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // Vercel retornou HTML de erro (crash/timeout) — tratar como aviso, não erro
+        if (text.includes("FUNCTION_INVOCATION_FAILED") || text.includes("server error")) {
+          setScanMsg("⚠️ Varredura interrompida. Tente novamente ou use o modo Mercado.");
+          await fetchArticles();
+          return;
+        }
+        throw new Error("Resposta inválida: " + text.slice(0, 80));
+      }
       if (!res.ok || data.error) {
         // Timeout/crash da função — artigos de mercado podem ter sido salvos parcialmente
         const msg = data.error || `HTTP ${res.status}`;
