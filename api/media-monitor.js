@@ -129,13 +129,13 @@ const OBESITY_TITLE_TERMS = [
 
 function isMedicalContext(title, _description) {
   // Filtra SOMENTE pelo título — descrição do RSS é HTML lixo
-  const t = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const t = title.toLowerCase();
   return OBESITY_TITLE_TERMS.some(w => t.includes(w));
 }
 
 function scoreRelevancia(title, description, isMedico = false) {
   if (isMedico) return "alta";
-  const text = `${title} ${description}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const text = `${title} ${description}`.toLowerCase();
   let score = 0;
   ["esg","gastroplastia endoscopica","sleeve endoscopico","balao intragastrico","endobariatria","endoscopic sleeve","intragastric balloon"].forEach(w => { if (text.includes(w)) score += 3; });
   ["obesidade","obesity","ozempic","mounjaro","glp","wegovy","bariatrica","bariatric"].forEach(w => { if (text.includes(w)) score += 2; });
@@ -192,7 +192,7 @@ export default async function handler(req, res) {
         "balão intragástrico","balao intragastrico","intragastric balloon",
         "endobariatria","esg","imc","reganho de peso","compulsão alimentar","apetite","caneta emagrecedora",
       ];
-      const isOk = t => OBESITY.some(w => (t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").includes(w));
+      const isOk = t => OBESITY.some(w => (t||"").toLowerCase().includes(w));
 
       // Buscar todos os artigos de médicos
       const all = await supaFetch("media_alerts?select=id,titulo&tag=eq.M%C3%A9dico%20Parceiro&limit=500") || [];
