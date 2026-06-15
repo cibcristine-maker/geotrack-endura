@@ -95,11 +95,30 @@ function normalizarNome(nome) {
   return nome.replace(/^dr\.?\s+|^dra\.?\s+/i, "").trim();
 }
 
-// Verifica se o artigo tem contexto médico — exige pelo menos 2 termos específicos
-function isMedicalContext(title, description) {
-  const text = `${title} ${description}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const matches = MEDICAL_CONTEXT.filter(w => text.includes(w));
-  return matches.length >= 2;
+// FILTRO RESTRITO: só aceita artigo se o TÍTULO contiver pelo menos 1 termo de obesidade/emagrecimento
+// Propositalmente ignoramos a descrição pois o RSS retorna HTML encoded (&lt;a href=...)
+const OBESITY_TITLE_TERMS = [
+  // Condição
+  "obesidade","obeso","obesa","sobrepeso","overweight","obesity",
+  // Perda de peso / emagrecimento
+  "emagrecimento","emagrecer","perda de peso","weight loss","perda peso",
+  // Medicamentos GLP-1 — muito específicos, raramente homônimos
+  "ozempic","wegovy","semaglutida","semaglutide","mounjaro","tirzepatida","tirzepatide",
+  "glp-1","glp1","saxenda","victoza","rybelsus",
+  // Procedimentos bariátricos / endoscópicos
+  "gastroplastia","gastric sleeve","sleeve","bypass gástrico","cirurgia bariátrica",
+  "cirurgia bariatrica","bariátrica","bariatrica","gastrectomia",
+  "balão intragástrico","balao intragastrico","intragastric balloon",
+  "endoscopic sleeve","esg endobariatria","endobariatria",
+  // Contexto clínico
+  "imc","índice de massa corporal","indice de massa corporal",
+  "reganho de peso","compulsão alimentar",
+];
+
+function isMedicalContext(title, _description) {
+  // Filtra SOMENTE pelo título — descrição do RSS é HTML lixo
+  const t = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return OBESITY_TITLE_TERMS.some(w => t.includes(w));
 }
 
 function scoreRelevancia(title, description, isMedico = false) {
@@ -213,7 +232,7 @@ export default async function handler(req, res) {
         // Fallback: termos clínicos restritos quando não há cidade/especialidade
         const contextoClin = qualificadores.length > 0
           ? qualificadores.join(" ")
-          : "médico obesidade OR gastroplastia OR endoscopia OR bariatrica";
+          : "obesidade OR semaglutida OR ozempic OR gastroplastia OR bariatrica OR "perda de peso"";
 
         const queriesMedico = [
           `"${nome}" ${contextoClin}`,
