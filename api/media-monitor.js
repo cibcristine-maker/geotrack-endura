@@ -199,15 +199,24 @@ export default async function handler(req, res) {
     // ── MÉDICOS: Google News RSS + filtro de contexto médico ──
     if (mode === "all" || mode === "doctors") {
       let medicos = [];
-      try { medicos = await supaFetch("medicos?select=id,nome&order=nome") || []; }
+      try { medicos = await supaFetch("medicos?select=id,nome,cidade,especialidade&order=nome") || []; }
       catch (err) { errors.push(`Supabase médicos: ${err.message}`); }
 
       for (const medico of medicos) {
         const nome = normalizarNome(medico.nome);
         if (!nome || nome.length < 5) continue;
 
+        // Monta qualificadores para evitar homônimos
+        const qualificadores = [];
+        if (medico.cidade)       qualificadores.push(medico.cidade);
+        if (medico.especialidade) qualificadores.push(medico.especialidade);
+        // Fallback: termos clínicos restritos quando não há cidade/especialidade
+        const contextoClin = qualificadores.length > 0
+          ? qualificadores.join(" ")
+          : "médico obesidade OR gastroplastia OR endoscopia OR bariatrica";
+
         const queriesMedico = [
-          `"${nome}" obesidade OR endoscopia OR gastroplastia OR bariátrica OR semaglutida OR tirzepatida OR ozempic OR mounjaro`,
+          `"${nome}" ${contextoClin}`,
         ];
 
         for (const query of queriesMedico) {
@@ -244,3 +253,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
