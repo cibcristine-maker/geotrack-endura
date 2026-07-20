@@ -22,16 +22,16 @@ const PLATFORMS = [
 ];
 
 const QUESTIONS_TPL = [
-  { id: 1, text: "Parei o Mounjaro em {cidade} e voltei a engordar, o que fazer?", intent: "Reganho pós-GLP-1", priority: "critica" },
-  { id: 2, text: "Parei ozempic e engordei tudo de volta, existe solução definitiva em {cidade}?", intent: "Reganho pós-GLP-1", priority: "critica" },
-  { id: 3, text: "Emagreci com remédio mas voltei a engordar, o que fazer em {cidade}?", intent: "Reganho pós-remédio", priority: "critica" },
-  { id: 4, text: "Qual o melhor tratamento para obesidade em {cidade} sem cirurgia aberta?", intent: "Alternativa cirúrgica", priority: "alta" },
-  { id: 5, text: "Tratamento para quem não quer fazer cirurgia bariátrica em {cidade}?", intent: "Alternativa cirúrgica", priority: "alta" },
-  { id: 6, text: "Qual especialista trata obesidade com endoscopia em {cidade}?", intent: "Busca por especialista", priority: "alta" },
-  { id: 7, text: "Como perder peso de forma definitiva em {cidade}?", intent: "Descoberta geral", priority: "media" },
-  { id: 8, text: "Alternativa à cirurgia bariátrica em {cidade} que funciona?", intent: "Alternativa cirúrgica", priority: "media" },
-  { id: 9, text: "Quem trata reganho de peso após GLP-1 em {cidade}?", intent: "Reganho pós-GLP-1", priority: "critica" },
-  { id: 10, text: "Qual médico faz gastroplastia endoscópica em {cidade}?", intent: "Busca direta", priority: "critica", scoreEspecial: true },
+  { id: 1, text: "Parei de tomar Mounjaro e engordei de novo. Existe algum outro tipo de tratamento que seja duradouro? Moro em {cidade}.", intent: "Reganho pós-GLP-1", priority: "critica" },
+  { id: 2, text: "Estou usando caneta emagrecedora mas o peso estagnou. Existe algum tratamento duradouro? Moro em {cidade}.", intent: "Estagnação no GLP-1", priority: "critica" },
+  { id: 3, text: "Tenho obesidade mas tenho medo de cirurgia bariátrica, quais as opções menos invasivas? Moro em {cidade}.", intent: "Alternativa cirúrgica", priority: "alta" },
+  { id: 4, text: "Não quero operar mas preciso perder peso de verdade, quais alternativas existem? Moro em {cidade}.", intent: "Alternativa cirúrgica", priority: "alta" },
+  { id: 5, text: "Qual tipo de médico devo procurar para tratar obesidade sem cirurgia? Moro em {cidade}.", intent: "Busca por especialista", priority: "alta" },
+  { id: 6, text: "Já tentei dieta, academia e remédio e nada funcionou de forma definitiva, o que mais existe? Moro em {cidade}.", intent: "Descoberta geral", priority: "media" },
+  { id: 7, text: "Existe algum procedimento minimamente invasivo para emagrecer que realmente funciona? Moro em {cidade}.", intent: "Procedimento minimamente invasivo", priority: "media" },
+  { id: 8, text: "Qual especialista procurar quando o GLP-1 para de fazer efeito e o peso volta? Moro em {cidade}.", intent: "Reganho pós-GLP-1", priority: "critica" },
+  { id: 9, text: "Meu médico indicou bariátrica mas tenho medo de operar, existe outro caminho? Moro em {cidade}.", intent: "Alternativa cirúrgica", priority: "alta" },
+  { id: 10, text: "Qual médico faz gastroplastia endoscópica e é referência? Moro em {cidade}.", intent: "Busca direta", priority: "critica", scoreEspecial: true },
 ];
 
 const SCORE_OPTIONS = [
