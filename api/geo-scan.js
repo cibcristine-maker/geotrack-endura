@@ -194,10 +194,34 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Método não permitido" });
 
-  const { medico_id, nome_medico, cidade, plataformas } = req.body || {};
+  const { medico_id, nome_medico, cidade, plataformas, teste } = req.body || {};
 
   if (!medico_id || !nome_medico || !cidade) {
     return res.status(400).json({ error: "medico_id, nome_medico e cidade são obrigatórios" });
+  }
+
+  // Modo diagnóstico: testa só 1 pergunta em 1 plataforma
+  if (teste) {
+    const plat = plataformas?.[0] || "chatgpt";
+    const fn = LLM_FNS[plat];
+    if (!fn) return res.status(400).json({ error: `Plataforma inválida: ${plat}` });
+    const q = QUESTIONS_TPL[0];
+    const prompt = q.text.replace(/{cidade}/g, cidade);
+    try {
+      const chaves = {
+        chatgpt: !!process.env.OPENAI_API_KEY,
+        gemini: !!process.env.GEMINI_API_KEY,
+        claude: !!process.env.ANTHROPIC_API_KEY,
+        perplexity: !!process.env.PERPLEXITY_API_KEY,
+        grok: !!process.env.GROK_API_KEY,
+        supa: !!process.env.SUPA_SERVICE_KEY,
+      };
+      const resposta = await fn(prompt);
+      const score = calcularScore(resposta, nome_medico, q.id);
+      return res.status(200).json({ ok: true, plataforma: plat, prompt, resposta: resposta.slice(0,300), score, chaves });
+    } catch (e) {
+      return res.status(200).json({ ok: false, plataforma: plat, prompt, erro: e.message, stack: e.stack?.slice(0,300) });
+    }
   }
 
   const supaKey = process.env.SUPA_SERVICE_KEY;
