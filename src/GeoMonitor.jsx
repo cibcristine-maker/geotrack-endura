@@ -110,16 +110,54 @@ function AutoScanButton({ medico, accent, muted, card, border, onScanComplete })
     }
   }
 
+  async function testarDiagnostico() {
+    if (!medico) return;
+    setScanning(true);
+    setErro(null);
+    setResultado(null);
+    try {
+      const res = await fetch("/api/geo-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          medico_id: medico.id,
+          nome_medico: medico.nome,
+          cidade: medico.cidade || "São Paulo",
+          plataformas: ["chatgpt"],
+          teste: true,
+        }),
+      });
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        setErro(`🔍 DIAGNÓSTICO:
+Chaves: ${JSON.stringify(data.chaves)}
+Plataforma: ${data.plataforma}
+OK: ${data.ok}
+${data.erro ? "Erro: " + data.erro : "Score: " + data.score + "
+Resposta: " + data.resposta}`);
+      } catch { setErro("Resposta inválida: " + text.slice(0,300)); }
+    } catch(e) { setErro("Falha na chamada: " + e.message); }
+    finally { setScanning(false); }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <button onClick={iniciarScan} disabled={scanning || !medico} style={{
-        padding: "8px 16px", borderRadius: 8, border: `1px solid ${scanning ? muted : accent}`,
-        background: scanning ? `${muted}22` : `${accent}22`, color: scanning ? muted : accent,
-        cursor: scanning || !medico ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600,
-        letterSpacing: 1, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
-      }}>
-        {scanning ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> Analisando...</> : <>🤖 Auto Scan</>}
-      </button>
+      <div style={{ display: "flex", gap: 6 }}>
+        <button onClick={iniciarScan} disabled={scanning || !medico} style={{
+          padding: "8px 16px", borderRadius: 8, border: `1px solid ${scanning ? muted : accent}`,
+          background: scanning ? `${muted}22` : `${accent}22`, color: scanning ? muted : accent,
+          cursor: scanning || !medico ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600,
+          letterSpacing: 1, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
+        }}>
+          {scanning ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> Analisando...</> : <>🤖 Auto Scan</>}
+        </button>
+        <button onClick={testarDiagnostico} disabled={scanning || !medico} style={{
+          padding: "8px 12px", borderRadius: 8, border: `1px solid ${muted}`,
+          background: "transparent", color: muted,
+          cursor: scanning || !medico ? "not-allowed" : "pointer", fontSize: 11, fontWeight: 600,
+        }}>🔍 Diagnóstico</button>
+      </div>
       {resultado && (
         <div style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "#d1fae522", border: "1px solid #10b98133", color: "#10b981" }}>
           ✅ Scan concluído · Score: {resultado.percentual}% · {resultado.total} registros
@@ -127,7 +165,7 @@ function AutoScanButton({ medico, accent, muted, card, border, onScanComplete })
         </div>
       )}
       {erro && (
-        <div style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, background: "#fee2e222", border: "1px solid #ef444433", color: "#ef4444" }}>
+        <div style={{ fontSize: 11, padding: "8px 10px", borderRadius: 6, background: "#fee2e222", border: "1px solid #ef444433", color: "#ef4444", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
           ⚠️ {erro}
         </div>
       )}
