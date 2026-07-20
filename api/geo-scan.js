@@ -4,16 +4,16 @@
 const SUPA_URL = "https://ojbbjgqfjzygdenwtwrz.supabase.co";
 
 const QUESTIONS_TPL = [
-  { id: 1, text: "Parei o Mounjaro em {cidade} e voltei a engordar, o que fazer?" },
-  { id: 2, text: "Parei ozempic e engordei tudo de volta, existe solução definitiva em {cidade}?" },
-  { id: 3, text: "Emagreci com remédio mas voltei a engordar, o que fazer em {cidade}?" },
-  { id: 4, text: "Qual o melhor tratamento para obesidade em {cidade} sem cirurgia aberta?" },
-  { id: 5, text: "Tratamento para quem não quer fazer cirurgia bariátrica em {cidade}?" },
-  { id: 6, text: "Qual especialista trata obesidade com endoscopia em {cidade}?" },
-  { id: 7, text: "Como perder peso de forma definitiva em {cidade}?" },
-  { id: 8, text: "Alternativa à cirurgia bariátrica em {cidade} que funciona?" },
-  { id: 9, text: "Quem trata reganho de peso após GLP-1 em {cidade}?" },
-  { id: 10, text: "Qual médico faz gastroplastia endoscópica em {cidade}?" },
+  { id: 1, text: "Parei de tomar Mounjaro e engordei de novo. Existe algum outro tipo de tratamento que seja duradouro? Moro em {cidade}." },
+  { id: 2, text: "Estou usando caneta emagrecedora mas o peso estagnou. Existe algum tratamento duradouro? Moro em {cidade}." },
+  { id: 3, text: "Tenho obesidade mas tenho medo de cirurgia bariátrica, quais as opções menos invasivas? Moro em {cidade}." },
+  { id: 4, text: "Não quero operar mas preciso perder peso de verdade, quais alternativas existem? Moro em {cidade}." },
+  { id: 5, text: "Qual tipo de médico devo procurar para tratar obesidade sem cirurgia? Moro em {cidade}." },
+  { id: 6, text: "Já tentei dieta, academia e remédio e nada funcionou de forma definitiva, o que mais existe? Moro em {cidade}." },
+  { id: 7, text: "Existe algum procedimento minimamente invasivo para emagrecer que realmente funciona? Moro em {cidade}." },
+  { id: 8, text: "Qual especialista procurar quando o GLP-1 para de fazer efeito e o peso volta? Moro em {cidade}." },
+  { id: 9, text: "Meu médico indicou bariátrica mas tenho medo de operar, existe outro caminho? Moro em {cidade}." },
+  { id: 10, text: "Qual médico faz gastroplastia endoscópica e é referência? Moro em {cidade}." },
 ];
 
 function calcularScore(resposta, nomeMedico, questaoId) {
