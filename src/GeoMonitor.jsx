@@ -75,10 +75,14 @@ function AutoScanButton({ medico, accent, muted, card, border, onScanComplete })
     setResultado(null);
     setErro(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 280000); // 280s timeout
+
     try {
       const res = await fetch("/api/geo-scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           medico_id: medico.id,
           nome_medico: medico.nome,
@@ -86,12 +90,21 @@ function AutoScanButton({ medico, accent, muted, card, border, onScanComplete })
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
+      clearTimeout(timeoutId);
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); }
+      catch { throw new Error(`Resposta inválida da API: ${text.slice(0,200)}`); }
+      if (!res.ok) throw new Error(data.error || `Erro HTTP ${res.status}`);
       setResultado(data);
       if (onScanComplete) onScanComplete();
     } catch (e) {
-      setErro(e.message || "Erro desconhecido");
+      clearTimeout(timeoutId);
+      if (e.name === "AbortError") {
+        setErro("Timeout — o scan demorou mais de 4 minutos. Tente novamente ou verifique as chaves de API no Vercel.");
+      } else {
+        setErro(e.message || "Erro desconhecido");
+      }
     } finally {
       setScanning(false);
     }
