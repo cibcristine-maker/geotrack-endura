@@ -222,24 +222,32 @@ module.exports = async function handler(req, res) {
   const resultados = [];
   const erros = [];
 
+  // Roda as plataformas de cada pergunta EM PARALELO (antes era sequencial: 65
+  // chamadas em fila esperando uma da outra, o que estourava o tempo limite
+  // com 13 perguntas). Agora são 13 rodadas, cada uma limitada pela plataforma
+  // mais lenta daquela rodada, não pela soma de todas as chamadas.
   for (const questao of QUESTIONS_TPL) {
     const prompt = questao.text.replace(/{cidade}/g, cidade);
 
-    for (const plataforma of plataformasRodar) {
-      const fn = LLM_FNS[plataforma];
-      if (!fn) continue;
+    const tarefas = plataformasRodar
+      .filter(plataforma => LLM_FNS[plataforma])
+      .map(async (plataforma) => {
+        const fn = LLM_FNS[plataforma];
+        try {
+          const resposta = await fn(prompt);
+          const score = calcularScore(resposta, nome_medico, questao.id);
+          await salvarScore(supaKey, medico_id, questao.id, plataforma, score);
+          return { ok: true, questao_id: questao.id, plataforma, score };
+        } catch (e) {
+          return { ok: false, questao_id: questao.id, plataforma, erro: e.message };
+        }
+      });
 
-      try {
-        const resposta = await fn(prompt);
-        const score = calcularScore(resposta, nome_medico, questao.id);
-        await salvarScore(supaKey, medico_id, questao.id, plataforma, score);
-        resultados.push({ questao_id: questao.id, plataforma, score });
-      } catch (e) {
-        erros.push({ questao_id: questao.id, plataforma, erro: e.message });
-      }
-
-      await new Promise(r => setTimeout(r, 200));
-    }
+    const respostas = await Promise.all(tarefas);
+    respostas.forEach(r => {
+      if (r.ok) resultados.push({ questao_id: r.questao_id, plataforma: r.plataforma, score: r.score });
+      else erros.push({ questao_id: r.questao_id, plataforma: r.plataforma, erro: r.erro });
+    });
   }
 
   const scoreTotal = resultados.reduce((a, b) => a + b.score, 0);
