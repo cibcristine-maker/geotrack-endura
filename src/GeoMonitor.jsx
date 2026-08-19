@@ -136,8 +136,7 @@ function AutoScanButton({ medico, accent, muted, card, border, onScanComplete })
 Chaves: ${JSON.stringify(data.chaves)}
 Plataforma: ${data.plataforma}
 OK: ${data.ok}
-${data.erro ? "Erro: " + data.erro : "Score: " + data.score + "
-Resposta: " + data.resposta}`);
+${data.erro ? "Erro: " + data.erro : "Score: " + data.score + "\nResposta: " + data.resposta}`);
       } catch { setErro("Resposta inválida: " + text.slice(0,300)); }
     } catch(e) { setErro("Falha na chamada: " + e.message); }
     finally { setScanning(false); }
