@@ -23,21 +23,23 @@ const PLATFORMS = [
 
 const QUESTIONS_TPL = [
   { id: 1, text: "Parei de tomar Mounjaro e engordei de novo. Existe algum outro tipo de tratamento que seja duradouro? Moro em {cidade}.", intent: "Reganho pós-GLP-1", priority: "critica" },
-  { id: 2, text: "Estou usando caneta emagrecedora mas o peso estagnou. Existe algum tratamento duradouro? Moro em {cidade}.", intent: "Estagnação no GLP-1", priority: "critica" },
-  { id: 3, text: "Tenho obesidade mas tenho medo de cirurgia bariátrica, quais as opções menos invasivas? Moro em {cidade}.", intent: "Alternativa cirúrgica", priority: "alta" },
-  { id: 4, text: "Não quero operar mas preciso perder peso de verdade, quais alternativas existem? Moro em {cidade}.", intent: "Alternativa cirúrgica", priority: "alta" },
-  { id: 5, text: "Qual tipo de médico devo procurar para tratar obesidade sem cirurgia? Moro em {cidade}.", intent: "Busca por especialista", priority: "alta" },
-  { id: 6, text: "Já tentei dieta, academia e remédio e nada funcionou de forma definitiva, o que mais existe? Moro em {cidade}.", intent: "Descoberta geral", priority: "media" },
-  { id: 7, text: "Existe algum procedimento minimamente invasivo para emagrecer que realmente funciona? Moro em {cidade}.", intent: "Procedimento minimamente invasivo", priority: "media" },
-  { id: 8, text: "Qual especialista procurar quando o GLP-1 para de fazer efeito e o peso volta? Moro em {cidade}.", intent: "Reganho pós-GLP-1", priority: "critica" },
-  { id: 9, text: "Meu médico indicou bariátrica mas tenho medo de operar, existe outro caminho? Moro em {cidade}.", intent: "Alternativa cirúrgica", priority: "alta" },
-  { id: 10, text: "Qual médico faz gastroplastia endoscópica e é referência? Moro em {cidade}.", intent: "Busca direta", priority: "critica", scoreEspecial: true },
+  { id: 2, text: "Qual especialista procurar quando o GLP-1 para de fazer efeito e o peso volta? Moro em {cidade}.", intent: "Reganho pós-GLP-1", priority: "critica" },
+  { id: 3, text: "O medicamento me fez mal e eu parei de tomar. Quais os caminhos para tratar obesidade sem passar por isso de novo? Moro em {cidade}.", intent: "Intolerância a efeito colateral", priority: "alta" },
+  { id: 4, text: "Não consigo tomar a caneta emagrecedora por causa dos efeitos colaterais. Existe outro tratamento que funcione? Moro em {cidade}.", intent: "Intolerância a efeito colateral", priority: "alta" },
+  { id: 5, text: "Estou usando caneta emagrecedora mas o peso estagnou. Existe algum tratamento duradouro? Moro em {cidade}.", intent: "Estagnação no GLP-1", priority: "critica" },
+  { id: 6, text: "Não emagreço mais com Mounjaro, o que fazer? Moro em {cidade}.", intent: "Estagnação no GLP-1", priority: "critica" },
+  { id: 7, text: "Não consigo pagar a caneta emagrecedora todo mês. Existe alternativa com melhor custo a longo prazo? Moro em {cidade}.", intent: "Objeção de custo", priority: "alta" },
+  { id: 8, text: "Qual tipo de médico devo procurar para tratar obesidade sem cirurgia? Moro em {cidade}.", intent: "Busca por especialista", priority: "alta" },
+  { id: 9, text: "Tenho obesidade mas tenho medo de cirurgia bariátrica, quais as opções menos invasivas? Moro em {cidade}.", intent: "Alternativa cirúrgica", priority: "alta" },
+  { id: 10, text: "Meu médico indicou bariátrica mas tenho medo de operar, existe outro caminho? Moro em {cidade}.", intent: "Alternativa cirúrgica", priority: "alta" },
+  { id: 11, text: "Fiz cirurgia bariátrica e voltei a engordar. Existe tratamento sem operar de novo? Moro em {cidade}.", intent: "Reganho pós-bariátrica", priority: "critica" },
+  { id: 12, text: "Meu estômago dilatou depois da bariátrica e voltei a engordar. O que fazer sem nova cirurgia? Moro em {cidade}.", intent: "Reganho pós-bariátrica", priority: "critica" },
+  { id: 13, text: "Qual médico faz gastroplastia endoscópica e é referência? Moro em {cidade}.", intent: "Busca direta", priority: "critica", scoreEspecial: true },
 ];
 
 const SCORE_OPTIONS = [
   { value: 0, label: "Invisível", color: "#ef4444", bg: "#fee2e2" },
   { value: 1, label: "ESG mencionada", color: "#f59e0b", bg: "#fef3c7" },
-  { value: 2, label: "ESG + GLP-1", color: "#3b82f6", bg: "#dbeafe" },
   { value: 3, label: "Médico citado", color: "#10b981", bg: "#d1fae5" },
 ];
 
@@ -348,7 +350,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: 2, color: accent, textTransform: "uppercase", fontFamily: "monospace" }}>GEO Intelligence · 5 Plataformas</div>
-          <div style={{ fontSize: 13, color: muted, marginTop: 2 }}>10 perguntas com cidade do médico · {medicos.length} médicos</div>
+          <div style={{ fontSize: 13, color: muted, marginTop: 2 }}>13 perguntas com cidade do médico · {medicos.length} médicos</div>
         </div>
         <div style={{ display: "flex", gap: 4, background: card, padding: 4, borderRadius: 8, border: `1px solid ${border}` }}>
           {[["medico", "Por Médico"], ["plataforma", "Por Plataforma"]].map(([key, label]) => (
@@ -447,7 +449,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
                               cursor: "pointer", fontSize: 13, fontWeight: 700, transition: "all 0.15s"
                             }}>{opt.value}</button>
                         ))}
-                        {current !== null && <span style={{ fontSize: 11, color: SCORE_OPTIONS[current]?.color, minWidth: 70 }}>{SCORE_OPTIONS[current]?.label}</span>}
+                        {current !== null && <span style={{ fontSize: 11, color: SCORE_OPTIONS.find(o => o.value === current)?.color, minWidth: 70 }}>{SCORE_OPTIONS.find(o => o.value === current)?.label}</span>}
                       </div>
                     </div>
                   </div>
@@ -545,7 +547,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
                       </td>
                       {QUESTIONS_TPL.map(q => {
                         const current = getScore(m.id, q.id, pl.id);
-                        const opt = current !== null ? SCORE_OPTIONS[current] : null;
+                        const opt = current !== null ? SCORE_OPTIONS.find(o => o.value === current) : null;
                         const isQ10 = q.scoreEspecial;
                         return (
                           <td key={q.id} style={{ padding: "4px", textAlign: "center" }}>
@@ -579,7 +581,7 @@ export default function GeoMonitor({ medicos = [], s = {} }) {
       )}
 
       <div style={{ marginTop: 16, padding: "10px 14px", background: `${accent}11`, borderRadius: 8, fontSize: 12, color: muted, border: `1px solid ${accent}33` }}>
-        <strong style={{ color: accent }}>Escala:</strong> 0 Invisível · 1 ESG mencionada · 2 ESG+GLP-1 · 3 Médico citado por nome · Q10: apenas 0 ou 3
+        <strong style={{ color: accent }}>Escala:</strong> 0 Invisível · 1 ESG mencionada · 3 Médico citado por nome · Q13 (busca direta): apenas 0 ou 3
       </div>
     </div>
   );

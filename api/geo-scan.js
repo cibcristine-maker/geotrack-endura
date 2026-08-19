@@ -5,15 +5,18 @@ const SUPA_URL = "https://ojbbjgqfjzygdenwtwrz.supabase.co";
 
 const QUESTIONS_TPL = [
   { id: 1, text: "Parei de tomar Mounjaro e engordei de novo. Existe algum outro tipo de tratamento que seja duradouro? Moro em {cidade}." },
-  { id: 2, text: "Estou usando caneta emagrecedora mas o peso estagnou. Existe algum tratamento duradouro? Moro em {cidade}." },
-  { id: 3, text: "Tenho obesidade mas tenho medo de cirurgia bariátrica, quais as opções menos invasivas? Moro em {cidade}." },
-  { id: 4, text: "Não quero operar mas preciso perder peso de verdade, quais alternativas existem? Moro em {cidade}." },
-  { id: 5, text: "Qual tipo de médico devo procurar para tratar obesidade sem cirurgia? Moro em {cidade}." },
-  { id: 6, text: "Já tentei dieta, academia e remédio e nada funcionou de forma definitiva, o que mais existe? Moro em {cidade}." },
-  { id: 7, text: "Existe algum procedimento minimamente invasivo para emagrecer que realmente funciona? Moro em {cidade}." },
-  { id: 8, text: "Qual especialista procurar quando o GLP-1 para de fazer efeito e o peso volta? Moro em {cidade}." },
-  { id: 9, text: "Meu médico indicou bariátrica mas tenho medo de operar, existe outro caminho? Moro em {cidade}." },
-  { id: 10, text: "Qual médico faz gastroplastia endoscópica e é referência? Moro em {cidade}." },
+  { id: 2, text: "Qual especialista procurar quando o GLP-1 para de fazer efeito e o peso volta? Moro em {cidade}." },
+  { id: 3, text: "O medicamento me fez mal e eu parei de tomar. Quais os caminhos para tratar obesidade sem passar por isso de novo? Moro em {cidade}." },
+  { id: 4, text: "Não consigo tomar a caneta emagrecedora por causa dos efeitos colaterais. Existe outro tratamento que funcione? Moro em {cidade}." },
+  { id: 5, text: "Estou usando caneta emagrecedora mas o peso estagnou. Existe algum tratamento duradouro? Moro em {cidade}." },
+  { id: 6, text: "Não emagreço mais com Mounjaro, o que fazer? Moro em {cidade}." },
+  { id: 7, text: "Não consigo pagar a caneta emagrecedora todo mês. Existe alternativa com melhor custo a longo prazo? Moro em {cidade}." },
+  { id: 8, text: "Qual tipo de médico devo procurar para tratar obesidade sem cirurgia? Moro em {cidade}." },
+  { id: 9, text: "Tenho obesidade mas tenho medo de cirurgia bariátrica, quais as opções menos invasivas? Moro em {cidade}." },
+  { id: 10, text: "Meu médico indicou bariátrica mas tenho medo de operar, existe outro caminho? Moro em {cidade}." },
+  { id: 11, text: "Fiz cirurgia bariátrica e voltei a engordar. Existe tratamento sem operar de novo? Moro em {cidade}." },
+  { id: 12, text: "Meu estômago dilatou depois da bariátrica e voltei a engordar. O que fazer sem nova cirurgia? Moro em {cidade}." },
+  { id: 13, text: "Qual médico faz gastroplastia endoscópica e é referência? Moro em {cidade}." },
 ];
 
 function calcularScore(resposta, nomeMedico, questaoId) {
@@ -32,28 +35,18 @@ function calcularScore(resposta, nomeMedico, questaoId) {
   const partes = nomeNorm.split(/\s+/).filter(p => p.length >= 4);
   const medicoCitado = partes.some(p => txt.includes(p));
 
-  // Pergunta 10: score especial — só 0 ou 3
-  if (questaoId === 10) {
+  // Pergunta 13: busca direta pelo nome do procedimento — score especial, só 0 ou 3
+  if (questaoId === 13) {
     return medicoCitado ? 3 : 0;
   }
 
   if (medicoCitado) return 3;
 
-  // Score 2: ESG + GLP-1 juntos
+  // Score 1: ESG mencionada (categoria aparece na resposta, com ou sem nome do médico)
   const temESG = txt.includes("gastroplastia endoscopica") ||
     txt.includes("esg") ||
     txt.includes("sleeve endoscopico") ||
-    txt.includes("endoscopic sleeve") ||
-    txt.includes("gastroplastia endoscopica");
-  const temGLP = txt.includes("glp") ||
-    txt.includes("ozempic") ||
-    txt.includes("mounjaro") ||
-    txt.includes("wegovy") ||
-    txt.includes("semaglutida") ||
-    txt.includes("tirzepatida");
-  if (temESG && temGLP) return 2;
-
-  // Score 1: ESG mencionada
+    txt.includes("endoscopic sleeve");
   if (temESG) return 1;
 
   return 0;
